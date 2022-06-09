@@ -1,2 +1,5 @@
 app/clouds.yaml
 app/__pycache__
+env/
+files/
+Tutorial de instalacao/
