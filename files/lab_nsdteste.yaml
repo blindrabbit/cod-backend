@@ -1,0 +1,93 @@
+nsd:nsd-catalog:
+  nsd:
+  - constituent-vnfd:
+# INICIO CONSTITUENT-VNFD #
+    - member-vnf-index: 1
+      vnfd-id-ref: desktop_padrao_vnfd
+    - member-vnf-index: 101
+      vnfd-id-ref: openwrt_vnfd
+# FIM CONSTITUENT-VNFD #
+# INICIO DESCRICAO DO SERVICO DE REDE #
+    description: Laboratorio Padrao
+    id: lab_nsdteste
+    name: lab_nsdteste
+    short-name: lab_nsdteste
+    vendor: OSM
+    version: '1.0'
+# FIM DESCRICAO DO SERVICO DE REDE #
+# INICIO IP-PROFILES #
+    ip-profiles:
+    - description: 'Rede de acesso dos desktops'
+      ip-profile-params:
+        dhcp-params:
+          count: 100
+          enabled: true
+          start-address: 10.10.10.10
+        dns-server:
+        - address: 8.8.8.8
+        ip-version: ipv4
+        gateway-address: 10.10.10.1
+        subnet-address: 10.10.10.0/24
+      name: IP-t1
+# FIM IP-PROFILES #
+
+    vld:
+    # - id: mgmtnet
+      # mgmt-network: 'true'
+      # name: mgmtnet
+      # short-name: mgmtnet
+      # type: ELAN
+      # vnfd-connection-point-ref:
+# INICIO INTERFACES DE GERENCIAMENTO #
+      # - member-vnf-index-ref: 101
+        # vnfd-connection-point-ref: vnf-mgmt
+        # vnfd-id-ref: openwrt_vnfd
+# FIM INTERFACES DE GERENCIAMENTO #
+    - id: dataNet
+      ip-profile-ref: IP-t1
+      name: dataNet
+      short-name: dataNet
+      type: ELAN
+      vnfd-connection-point-ref:
+# INICIO INTERFACES DE DADOS #
+      - member-vnf-index-ref: 1
+        ip-address: 10.10.10.11
+        vnfd-connection-point-ref: vnf-data
+        vnfd-id-ref: desktop_padrao_vnfd
+      - member-vnf-index-ref: 101
+        vnfd-connection-point-ref: vnf-data
+        vnfd-id-ref: openwrt_vnfd
+# FIM INTERFACES DE DADOS #
+    vnffgd:
+    - id: vnffg1
+      name: vnffg1-name
+      short-name: vnffg1-sname      
+      description: vnffg1-description
+      vendor: vnffg1-vendor
+      version: '1.0'
+      classifier:
+# INICIO SFC #
+      - id: class1
+        member-vnf-index-ref: 1
+        name: class1name
+        rsp-id-ref: rsp101
+        vnfd-connection-point-ref: vnf-data
+        vnfd-id-ref: desktop_padrao_vnfd
+        match-attributes:
+        - id: match1
+          ip-proto: 17
+          source-ip-address: 10.10.10.11
+          destination-port: 5001:5011
+# FIM SFC #
+      rsp:
+# INICIO RSP #
+      - id: rsp101
+        name: rsp101name
+        vnfd-connection-point-ref:
+        - member-vnf-index-ref: 101
+          order: 0
+          vnfd-egress-connection-point-ref: vnf-data
+          vnfd-id-ref: openwrt_vnfd
+          vnfd-ingress-connection-point-ref: vnf-data
+# FIM RSP #
+

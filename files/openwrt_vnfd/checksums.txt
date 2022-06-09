@@ -1,0 +1,2 @@
+cd2f374ef770991db2a9a5cbcf6c38f0	openwrt_vnfd/openwrt_vnfd.yaml
+af08bff87aff4d1e450f43ba9b6ef0f7	openwrt_vnfd/cloud_init/cloud-config.txt

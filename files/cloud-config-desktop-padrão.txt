@@ -1,0 +1,9 @@
+#cloud-config
+password: 123456
+chpasswd: { expire: False }
+ssh_pwauth: True
+
+runcmd:
+-   sysctl -w net.ipv4.ip_forward=1
+#-   ip route add default via 10.10.10.1
+
