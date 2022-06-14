@@ -1,12 +1,18 @@
-# from app.OSM import project
-from OSM import project
-import openstack
-from openstack .config import loader
-import sys
+
+
+from urls import *
 from database.models import User
-from database.models import Services
 from database.models import Project
 
+def delete_project(project_id, conn):
+
+    # DELETANDO O PROJETO
+    project_openstack = conn.get_project(project_id)
+    if project_openstack != None:
+        if project_openstack['name'].startswith(LABVER_PREFIX):
+            project_openstack = conn.delete_project(project_id)
+        return True
+    return False    
 
 def create_project(username, project_name, description, conn):
 
@@ -15,7 +21,7 @@ def create_project(username, project_name, description, conn):
     project_openstack = conn.create_project(name=project_name, description=description,
                                             domain_id='default')
 
-    print("MEU PROJETO", project_openstack)
+    # print("MEU PROJETO", project_openstack)
 
     role = 'member'
     role = conn.identity.find_role(role)
@@ -23,6 +29,14 @@ def create_project(username, project_name, description, conn):
     project = conn.identity.find_project(project_name)
 
     # ASSOCIANDO UM PROJETO A UM USUÁRIO E SUA DETERMINADA FUNÇÃO
+    conn.identity.assign_project_role_to_user(project, user, role)
+
+    role = 'admin'
+    role = conn.identity.find_role(role)
+    user = conn.identity.find_user('labver')
+    project = conn.identity.find_project(project_name)
+
+    # ASSOCIANDO O USUÁRIO LABVER COMO ADM AO PROJETO
     conn.identity.assign_project_role_to_user(project, user, role)
 
     return project_openstack
@@ -36,7 +50,8 @@ def save_project_db(id_project, name, username, id_openstack, id_OSM):
 
     Project.insert(id_project=id_project, name=name,
                    creation_date='2021-04-03',
-                   id_user=id_user, id_openstack=id_openstack,
+                   id_user=id_user,
+                   id_openstack=id_openstack,
                    id_OSM=id_OSM
                    ).execute()
 

@@ -7,24 +7,68 @@ import sys
 # conn = openstack.connect(cloud="devstack-admin")
 
 
-def create_network(name_network,conn):
-    network = conn.create_network(name = name_network)
+def create_network(name_network, project_id, conn):
+    network = conn.create_network(name = name_network, project_id = project_id)
     
     return network
 
 
 def create_subnet(network_id, subnet_name, ip_version, cidr, 
                   gateway_ip, conn):
-    
+
     subnet = conn.create_subnet(
     network_id,
     subnet_name = subnet_name,
     ip_version = ip_version,
     cidr = cidr,
-    gateway_ip = gateway_ip)
+    gateway_ip = gateway_ip,
+    enable_dhcp=True)
     
     return subnet
+
+
+def create_router(name, ext_gateway_net_id, project_id, conn):
+
+    router = conn.create_router(
+    name = name,    
+    ext_gateway_net_id = ext_gateway_net_id,
+    project_id = project_id)
     
+    return router
+
+def delete_port(port_id, conn):
+
+    port_openstack = conn.get_port(port_id)
+    if port_openstack != None:
+        if port_openstack['name'].startswith('_LABVER_'):
+            conn.delete_port(port_id)
+            return True
+
+    return False
+
+def delete_router(router_id, port_id, conn):
+
+    router_openstack = conn.get_router(router_id)
+    if router_openstack != None:
+        if router_openstack['name'].startswith('_LABVER_'):
+            conn.remove_router_interface(router = router_openstack, port_id = port_id)
+            conn.delete_router(router_id)
+            return True
+
+    return False
+
+
+def delete_network(network_id, conn):
+
+    network_openstack = conn.get_network(network_id)
+    # print(network_openstack)
+    if network_openstack != None:
+        if network_openstack['name'].startswith('_LABVER_'):
+            conn.delete_network(network_id)
+            return True
+
+    return False
+
 
 # print(example_network)
 # example_subnet = conn.network.create_subnet(

@@ -1,12 +1,14 @@
 # Rodar em modo de debug - autoreload
 # PS C:\Users\1918648\Documents\GitHub\Campus-ON-Demand\app> $env:FLASK_ENV="development"
 # PS C:\Users\1918648\Documents\GitHub\Campus-ON-Demand\app> python -m flask run
+# $env:OS_CLIENT_CONFIG_FILE="clouds.yaml"
 import json
 from OSM.project.project_OSM import *
 # import bios
 # from requests.api import head
 from database.models import Services
 from database.models import Server
+from database.models import *
 import requests
 from OSM.project import *
 from OSM.VIM import vim as OSMvim
@@ -25,6 +27,7 @@ from VIO.clouds.Openstack.Apis.nova.instance import *
 from VIO.clouds.Openstack.Apis.nova.VM import *
 from VIO.clouds.Openstack.connection.connection import *
 from urls import *
+from env import *
 from authentication.authentication import *
 from openstack.exceptions import *
 from flask_cors import CORS
@@ -34,10 +37,10 @@ import time
 # from playhouse.shortcuts import model_to_dict
 from benedict import benedict
 from operator import itemgetter
-from env import *
+from os import getenv
+from random import randint
 
 requests.packages.urllib3.disable_warnings()
-
 
 def main():
     print ("Iniciando Serviço")
@@ -51,10 +54,157 @@ def main():
 #     # note that we set the 404 status explicitly
 #     return "", 404
 
-    @app.route('/')
-    def index():
+    @app.route("/delete_laboratory/<laboratory_id>/", methods=['POST', 'GET', 'DELETE'])
+    def delete_laboratory(laboratory_id):
+        cloud = 'openstack-serra'
+
+        connection_openstack = create_connection_openstack_clouds_file(cloud)
+        
+        laboratory_from_bd = Laboratory.get_or_none(Laboratory.id_laboratory==laboratory_id)
+
+        project_from_bd = Project.get_or_none(Project.id_laboratory==laboratory_id)
+
+        if laboratory_from_bd:
+            delete_router(project_from_bd.openstack_id_router,
+                          project_from_bd.openstack_id_router_gateway_port, 
+                          connection_openstack)
+            delete_network(project_from_bd.openstack_id_network, connection_openstack)
+            delete_project(project_from_bd.id_project, connection_openstack)
+            laboratory_from_bd.delete_instance(recursive=True)
+
+        return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
+
+    @app.route('/create_laboratory')
+    def create_laboratory():
+        cloud = 'openstack-serra'
+        payload = REQUEST_POST1
+
+        if Laboratory.get_or_none(Laboratory.name==payload['name']):
+            return "ja tem com esse nome"
+
+        laboratory_to_bd = Laboratory.create(
+            name = payload['name'],
+            classroom = payload['classroom'],
+            description = payload['description'],
+            instances = payload['instances'],
+            fk_user = User.select().where(User.id_user=='1234567890')
+        )
+
+        connection_openstack = create_connection_openstack_clouds_file(cloud)
+
+        username = 'renancs'
+        project_name = LABVER_PREFIX+'labteste01'
+        description = payload['description']
+        conn = connection_openstack
+
+        project = create_project(username, project_name, description, conn)
+
+        project_to_bd = Project.create(
+            id_project =  project['id'],
+            name = project_name,
+            fk_user = User.select().where(User.id_user=='1234567890'),
+            fk_laboratory = laboratory_to_bd.id_laboratory,
+            description = description
+        )
+
+        network = create_network(LABVER_PREFIX+'rede-data', project['id'], connection_openstack)
+
+        cidr = '10.'+ str(randint(0, 254))+'.'+str(randint(0, 254))+'.0/24'
+        gateway = cidr.replace('.0/24','.1')
+
+        subnetwork = create_subnet(network['id'], LABVER_PREFIX+'subrede-data', 4, cidr, 
+        gateway, connection_openstack)
+
+        router_gateway_port = connection_openstack.create_port(
+                network_id = network['id'],
+                name = LABVER_PREFIX+'porta_roteador',
+                admin_state_up = True,
+                fixed_ips = [
+                            {"ip_address": gateway, "subnet_id": subnetwork['id']},
+                            ])
+        provider_networt = connection_openstack.get_network('provider')
+
+        router = create_router(LABVER_PREFIX+'roteador', provider_networt['id'], project['id'], connection_openstack)
+
+        connection_openstack.add_router_interface(router=router,
+                                                  subnet_id=subnetwork['id'],
+                                                  port_id=router_gateway_port['id'])
+
+        project_to_bd.cidr=cidr
+        project_to_bd.gateway=gateway
+        project_to_bd.openstack_id_router=router['id']
+        project_to_bd.openstack_id_router_gateway_port=router_gateway_port['id']
+        project_to_bd.openstack_id_subnet=subnetwork['id']
+        project_to_bd.openstack_id_network=network['id']
+
+        project_to_bd.save()
+        id_do_lab = laboratory_to_bd.id_laboratory
+        link = "<a href='/delete_laboratory/"+str(id_do_lab)+"'>Apagar o LAB - "+str(id_do_lab)+"</a>"
+
+        user_from_bd = User.get_by_id('1234567890')
+
+        if user_from_bd.token_OSM == '':
+            token = benedict.from_yaml(tokens.create_token())
+            token = token['id']
+            user_from_bd.token_OSM=token
+            user_from_bd.save()
+        else:
+            token = tokens.get_token_info(user_from_bd.token_OSM)
+
+        vimAccountId = OSMvim.create_vim(token)
+        # vimAccountId = {}
+        # vimAccountId["id"] = "8f3c0414-0ee7-4afe-a2bb-fe089433cdce"
+        # print(vimAccountId["id"])
+
+        nsd = OSMNS.create_nsd(REQUEST_POST1)
+        nsdId = OSMNS.compose_ns(token, nsd)
+        nsName = REQUEST_POST['nome']
+
+        nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
+
+        print(nsdId, nsdId_instance)
+        return link
+
+
+    @app.route('/testemodel')
+    def testemodel():
         a = 10 + 10
-        return 'Hello World isso é um teste'
+ 
+        laboratory_to_bd = Laboratory(
+            name = REQUEST_POST['nome'],
+            classroom = REQUEST_POST['turma'],
+            description = REQUEST_POST['descricao'],
+            instances = REQUEST_POST['instancias'],
+            fk_user = User.select().where(User.id_user=='')
+        )
+
+        laboratory_to_bd.save()
+        laboratory_to_bd.networkservice()
+        
+    # id_laboratory = BigIntegerField(primary_key=True, unique=True,
+    #         constraints=[SQL('AUTO_INCREMENT')])
+    # name = CharField(max_length=100)
+    # classroom = CharField(max_length=100)
+    # description = CharField(max_length=100)
+    # instances = IntegerField()
+    # dt_start = DateTimeField(default=datetime.now)
+    # creation_date = DateTimeField(default=datetime.now)
+    # fk_project = CharField(max_length=100)
+    # # fk_network_service = ForeignKeyField(networkservice, backref='laboratory')
+    # fk_user = ForeignKeyField(User, backref='laboratories')
+        # server_from_bd = Server.get_or_none(id_server_openstack=data['server_id'])
+        # if server_from_bd is None:
+        #     id = Server.insert(
+        #         name=data['server_nome'],
+        #         id_server_openstack=data['server_id'],
+        #         creation_date=time.time(),
+        #         fk_project=data['project_id'],
+        #         state='emuso',
+        #         cookie='COKKIECOOKIE'
+        #     ).on_conflict('replace').execute()
+
+
+        return 'Vamos testar o modelo!'
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
@@ -68,8 +218,8 @@ def main():
 
         # VERIFICAR SE JÁ TEM ALGUM TOKEN, SE TIVER USAR O EXISTENTE
         # CONSULTAR NO BANCO DE DADOS NA TABELA LABORATORIO - A CRIAR
-        token = benedict.from_yaml(tokens.create_token())
-
+        token = tokens.create_token()
+        # token = token['id']
         # Pilha de criação de infraestrutura dentro do OSM
 
         # SERÁ CRIADA UM VIM PARA CADA LABORATORIO
@@ -81,17 +231,19 @@ def main():
         # labProject = Nome do Projeto criado para o laboratorio
 
         # vimId = OSMvim.create_vim(token["id"], openstackUser, openstackPass, labProject)
-
-        vimAccountId = OSMvim.create_vim(token["id"])
+        print('88888888888888888888888888888888888888888888888888888888888')
+        print(token)
+        teste = token['id']
+        vimAccountId = OSMvim.create_vim(teste)
         # vimAccountId = {}
         # vimAccountId["id"] = "8f3c0414-0ee7-4afe-a2bb-fe089433cdce"
         # print(vimAccountId["id"])
 
         nsd = OSMNS.create_nsd(REQUEST_POST)
-        nsdId = OSMNS.compose_ns(token["id"], nsd)
+        nsdId = OSMNS.compose_ns(token, nsd)
         nsName = REQUEST_POST['nome']
 
-        OSMNS.instantiate_ns(token["id"], nsName, nsdId, vimAccountId["id"])
+        OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId["id"])
         # return str(retorno)
         return 'Hello World isso é um teste!!!'
 

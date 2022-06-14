@@ -36,6 +36,7 @@ def get_vim_account_by_id(token, id):
     return benedict.from_yaml(response.text)
 
 def create_vim(obj):
+    # obj = obj.replace('\r','')
     # https://172.16.112.56:9999/osm/admin/v1/vim_accounts
     # url = "https://fgcn-backflip3.cs.upb.de:9999/osm/admin/v1/wim_accounts"
     # executa("osm ns-create --ns_name "+ IDENTIFICADOR +" --nsd_name lab_nsd --vim_account VIM-"
@@ -63,14 +64,14 @@ def create_vim(obj):
             "additionalProp1": {}
         }
     }
-    print (payload)
+    # print (payload)
     headers = {
         'Content-Type': 'application/json',
         "Accept":"application/json",
         "Authorization": "Bearer "+obj
     }
+    print (headers)
 
     response = requests.request("POST", url, headers=headers, json = payload, verify=False)
-    response.json()
     # return benedict.from_yaml(response.text)
-    return (response.json())
+    return response.text
