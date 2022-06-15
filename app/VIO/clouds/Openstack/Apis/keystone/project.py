@@ -1,5 +1,3 @@
-
-
 from urls import *
 from database.models import User
 from database.models import Project

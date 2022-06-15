@@ -122,11 +122,10 @@ class Networkservice(BaseModel):
             constraints=[SQL('AUTO_INCREMENT')])
     id_osm_nsd = CharField(max_length=100)
     id_osm_vim = CharField(max_length=100)
-    subnet_address = CharField(max_length=100)
     creation_date = DateTimeField(default=datetime.now)
-    fk_project = ForeignKeyField(Project, backref='networkservice')
-    fk_vnffgd = ForeignKeyField(Vnffgd, backref='networkservice')
-    fk_Constituent_vnfd = ForeignKeyField(Constituent_vnfd, backref='networkservice')
+    fk_project = ForeignKeyField(Project, db_column='id_project')
+    fk_vnffgd = ForeignKeyField(Vnffgd, db_column='id_vnffgd')
+    fk_Constituent_vnfd = ForeignKeyField(Constituent_vnfd, db_column='id_constituent_vnfd')
 
     class Meta:
         table_name = 'networkservice'

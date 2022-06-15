@@ -2,6 +2,8 @@
 # PS C:\Users\1918648\Documents\GitHub\Campus-ON-Demand\app> $env:FLASK_ENV="development"
 # PS C:\Users\1918648\Documents\GitHub\Campus-ON-Demand\app> python -m flask run
 # $env:OS_CLIENT_CONFIG_FILE="clouds.yaml"
+# PS C:\Users\1918648\Documents\GitHub\cod-backend> .\env\Scripts\Activate
+# (env) PS C:\Users\1918648\Documents\GitHub\cod-backend> $env:OS_CLIENT_CONFIG_FILE="./app/clouds.yaml"
 import json
 from OSM.project.project_OSM import *
 # import bios
@@ -33,9 +35,11 @@ from openstack.exceptions import *
 from flask_cors import CORS
 from flask import Response
 import time
+import datetime
+
 # from keystoneclient.v3 import client
 # from playhouse.shortcuts import model_to_dict
-from benedict import benedict
+# from benedict import benedict
 from operator import itemgetter
 from os import getenv
 from random import randint
@@ -78,108 +82,228 @@ def main():
     def create_laboratory():
         cloud = 'openstack-serra'
         payload = REQUEST_POST1
+        undo=''
+        try:
+            if Laboratory.get_or_none(Laboratory.name==payload['name']):
+                return "ja tem com esse nome"
 
-        if Laboratory.get_or_none(Laboratory.name==payload['name']):
-            return "ja tem com esse nome"
+            laboratory_to_bd = Laboratory.create(
+                name = payload['name'],
+                classroom = payload['classroom'],
+                description = payload['description'],
+                instances = payload['instances'],
+                fk_user = User.select().where(User.id_user=='1234567890')
+            )
+            # print(laboratory_to_bd['id_laboratory'])
+            undo['laboratory_to_bd']=True#laboratory_to_bd['id_laboratory']
 
-        laboratory_to_bd = Laboratory.create(
-            name = payload['name'],
-            classroom = payload['classroom'],
-            description = payload['description'],
-            instances = payload['instances'],
-            fk_user = User.select().where(User.id_user=='1234567890')
-        )
+            connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-        connection_openstack = create_connection_openstack_clouds_file(cloud)
+            username = 'renancs'
+            project_name = LABVER_PREFIX+'labteste01'
+            description = payload['description']
+            conn = connection_openstack
 
-        username = 'renancs'
-        project_name = LABVER_PREFIX+'labteste01'
-        description = payload['description']
-        conn = connection_openstack
+            project = create_project(username, project_name, description, conn)
+            
+            undo['create_project_openstack']=project['id']
 
-        project = create_project(username, project_name, description, conn)
+            project_to_bd = Project.create(
+                id_project =  project['id'],
+                name = project_name,
+                fk_user = User.select().where(User.id_user=='1234567890'),
+                fk_laboratory = laboratory_to_bd.id_laboratory,
+                description = description
+            )
 
-        project_to_bd = Project.create(
-            id_project =  project['id'],
-            name = project_name,
-            fk_user = User.select().where(User.id_user=='1234567890'),
-            fk_laboratory = laboratory_to_bd.id_laboratory,
-            description = description
-        )
+            undo['project_to_bd']=project['id']
 
-        network = create_network(LABVER_PREFIX+'rede-data', project['id'], connection_openstack)
+            network = create_network(LABVER_PREFIX+'rede-data', project['id'], connection_openstack)
 
-        cidr = '10.'+ str(randint(0, 254))+'.'+str(randint(0, 254))+'.0/24'
-        gateway = cidr.replace('.0/24','.1')
+            undo['create_network_openstack']=network['id']
 
-        subnetwork = create_subnet(network['id'], LABVER_PREFIX+'subrede-data', 4, cidr, 
-        gateway, connection_openstack)
+            cidr = '10.'+ str(randint(0, 254))+'.'+str(randint(0, 254))+'.0/24'
+            gateway = cidr.replace('.0/24','.1')
 
-        router_gateway_port = connection_openstack.create_port(
-                network_id = network['id'],
-                name = LABVER_PREFIX+'porta_roteador',
-                admin_state_up = True,
-                fixed_ips = [
-                            {"ip_address": gateway, "subnet_id": subnetwork['id']},
-                            ])
-        provider_networt = connection_openstack.get_network('provider')
+            subnetwork = create_subnet(network['id'], LABVER_PREFIX+'subrede-data', 4, cidr, 
+            gateway, connection_openstack)
 
-        router = create_router(LABVER_PREFIX+'roteador', provider_networt['id'], project['id'], connection_openstack)
+            router_gateway_port = connection_openstack.create_port(
+                    network_id = network['id'],
+                    name = LABVER_PREFIX+'porta_roteador',
+                    admin_state_up = True,
+                    fixed_ips = [
+                                {"ip_address": gateway, "subnet_id": subnetwork['id']},
+                                ])
 
-        connection_openstack.add_router_interface(router=router,
-                                                  subnet_id=subnetwork['id'],
-                                                  port_id=router_gateway_port['id'])
+            undo['create_port_openstack']=router_gateway_port['id']
 
-        project_to_bd.cidr=cidr
-        project_to_bd.gateway=gateway
-        project_to_bd.openstack_id_router=router['id']
-        project_to_bd.openstack_id_router_gateway_port=router_gateway_port['id']
-        project_to_bd.openstack_id_subnet=subnetwork['id']
-        project_to_bd.openstack_id_network=network['id']
+            provider_networt = connection_openstack.get_network('provider')
 
-        project_to_bd.save()
-        id_do_lab = laboratory_to_bd.id_laboratory
-        link = "<a href='/delete_laboratory/"+str(id_do_lab)+"'>Apagar o LAB - "+str(id_do_lab)+"</a>"
+            router = create_router(LABVER_PREFIX+'roteador', provider_networt['id'], project['id'], connection_openstack)
 
-        user_from_bd = User.get_by_id('1234567890')
+            undo['create_router_openstack']=router['id']
 
-        if user_from_bd.token_OSM == '':
-            token = benedict.from_yaml(tokens.create_token())
-            token = token['id']
-            user_from_bd.token_OSM=token
-            user_from_bd.save()
-        else:
-            token = tokens.get_token_info(user_from_bd.token_OSM)
+            connection_openstack.add_router_interface(router=router,
+                                                    subnet_id=subnetwork['id'],
+                                                    port_id=router_gateway_port['id'])
 
-        vimAccountId = OSMvim.create_vim(token)
-        # vimAccountId = {}
-        # vimAccountId["id"] = "8f3c0414-0ee7-4afe-a2bb-fe089433cdce"
-        # print(vimAccountId["id"])
+            project_to_bd.cidr=cidr
+            project_to_bd.gateway=gateway
+            project_to_bd.openstack_id_router=router['id']
+            project_to_bd.openstack_id_router_gateway_port=router_gateway_port['id']
+            project_to_bd.openstack_id_subnet=subnetwork['id']
+            project_to_bd.openstack_id_network=network['id']
 
-        nsd = OSMNS.create_nsd(REQUEST_POST1)
-        nsdId = OSMNS.compose_ns(token, nsd)
-        nsName = REQUEST_POST['nome']
+            project_to_bd.save()
+            
+            id_do_lab = laboratory_to_bd.id_laboratory
+            link = "<a href='/delete_laboratory/"+str(id_do_lab)+"'>Apagar o LAB - "+str(id_do_lab)+"</a>"
 
-        nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
+            user_from_bd = User.get_by_id('1234567890')
 
-        print(nsdId, nsdId_instance)
-        return link
+            if user_from_bd.token_OSM == '':
+                token = tokens.create_token()
+                token = str(token['id'])
+                user_from_bd.token_OSM=token
+                user_from_bd.save()
+            else:
+                token = tokens.get_token_info(user_from_bd.token_OSM)
+                if "code" in token:
+                    if token['code'] == 'UNAUTHORIZED':
+                        token = tokens.create_token()
+                        token = str(token['id'])
+                        user_from_bd.token_OSM=token
+                        user_from_bd.save()
+
+            vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
+            if not vimAccount:
+                vimAccountId = OSMvim.create_vim(token, project_name)
+            else:
+                vimAccountId['id'] = vimAccount['_id']
+
+            nsd = OSMNS.create_nsd(REQUEST_POST1)
+            nsdId = OSMNS.compose_ns(token, nsd)
+            nsName = REQUEST_POST['nome']
+
+            nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
+
+            networkservice_to_bd = Networkservice.create(            
+                id_networkservice = nsdId,
+                id_osm_nsd = nsdId,
+                id_osm_vim = vimAccountId['id'],
+                fk_project = project['id'] #
+                # # parei aqui, fk_project = project['id'],
+    # NameError: name 'project' is not defined
+            )
+            networkservice_to_bd.save()
+
+            print("================================================================")
+            print(nsdId, nsdId_instance)
+            return link
+
+        except Exception as error:
+
+            print("falha")
+            # openstack
+            # remover router
+            if 'create_router_openstack' in undo:
+                delete_router(undo['create_router_openstack'], undo['create_port_openstack'], connection_openstack)
+            
+            if 'create_network_openstack' in undo:
+                delete_network(undo['create_network_openstack'], connection_openstack)
+            # undo['create_router_openstack']=router['id']
+            
+            if 'create_project_openstack' in undo:
+                delete_project(undo['create_project_openstack'], connection_openstack)
+            # undo['laboratory_to_bd']=laboratory_to_bd
+            
+            if 'laboratory_to_bd' in undo:
+                laboratory_to_bd.delete_instance(recursive=True)
+        #         laboratory_from_bd = Laboratory.get_or_none(Laboratory.id_laboratory==laboratory_to_bd['id_laboratory'])
+        #         laboratory_from_bd.delete_instance(recursive=True)
+
+            
+        #     undo['laboratory_to_bd']=laboratory_to_bd
+            
+        #     undo['project_to_bd']=project['id']
+        #     undo['create_project_openstack']=project['id']
+            
+        #     undo['project_to_bd']=project['id']
+
+        #     undo['create_network_openstack']=network['id']
+            
+        #     laboratory_from_bd = Laboratory.get_or_none(Laboratory.id_laboratory==laboratory_id)
+
+        #            project_from_bd = Project.get_or_none(Project.id_laboratory==laboratory_id)
+
+        # if laboratory_from_bd:
+        #     delete_router(project_from_bd.openstack_id_router,
+        #                   project_from_bd.openstack_id_router_gateway_port, 
+        #                   connection_openstack)
+        #     delete_network(project_from_bd.openstack_id_network, connection_openstack)
+        #     delete_project(project_from_bd.id_project, connection_openstack)
+        #     laboratory_from_bd.delete_instance(recursive=True)
+            # remover rede            
+            # def delete_network(network_id, conn):
+
+            # remover projeto
+            # def delete_project(project_id, conn):
+
+
+            #bd
+            # remover projeto
+            # projeto_from_bd.delete_instance(recursive=True)
+
+            # remover laboratorio            
+            # laboratory_from_bd.delete_instance(recursive=True)
+            return jsonify({'error': error})
+
 
 
     @app.route('/testemodel')
     def testemodel():
         a = 10 + 10
- 
-        laboratory_to_bd = Laboratory(
-            name = REQUEST_POST['nome'],
-            classroom = REQUEST_POST['turma'],
-            description = REQUEST_POST['descricao'],
-            instances = REQUEST_POST['instancias'],
-            fk_user = User.select().where(User.id_user=='')
-        )
 
-        laboratory_to_bd.save()
-        laboratory_to_bd.networkservice()
+        user_from_bd = User.get_by_id('1234567890')
+
+        if user_from_bd.token_OSM == '':
+            token = tokens.create_token()
+            token = str(token['id'])
+            user_from_bd.token_OSM=token
+            user_from_bd.save()
+        else:
+            token = tokens.get_token_info(user_from_bd.token_OSM)
+            if "code" in token:
+                if token['code'] == 'UNAUTHORIZED':
+                    token = tokens.create_token()
+                    token = str(token['id'])
+                    user_from_bd.token_OSM=token
+                    user_from_bd.save()
+
+        vimName = 'vim1'
+        
+        project_name = LABVER_PREFIX+'labteste01'
+
+        print('>>>>>>>>>>>>>>>>>>>>>',token)
+
+        vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
+        if not vimAccount:
+            vimAccountId = OSMvim.create_vim(token, project_name)
+        else:
+            vimAccountId = vimAccount['_id']
+
+ 
+        # laboratory_to_bd = Laboratory(
+        #     name = REQUEST_POST['nome'],
+        #     classroom = REQUEST_POST['turma'],
+        #     description = REQUEST_POST['descricao'],
+        #     instances = REQUEST_POST['instancias'],
+        #     fk_user = User.select().where(User.id_user=='')
+        # )
+
+        # laboratory_to_bd.save()
+        # laboratory_to_bd.networkservice()
         
     # id_laboratory = BigIntegerField(primary_key=True, unique=True,
     #         constraints=[SQL('AUTO_INCREMENT')])
@@ -204,7 +328,7 @@ def main():
         #     ).on_conflict('replace').execute()
 
 
-        return 'Vamos testar o modelo!'
+        return 'Vamos testar o modelo! -->'+str(vimAccountId)
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
@@ -219,32 +343,34 @@ def main():
         # VERIFICAR SE JÁ TEM ALGUM TOKEN, SE TIVER USAR O EXISTENTE
         # CONSULTAR NO BANCO DE DADOS NA TABELA LABORATORIO - A CRIAR
         token = tokens.create_token()
-        # token = token['id']
-        # Pilha de criação de infraestrutura dentro do OSM
+        print('----- ',token)
+        token = token['id']
+        print('===== ',str(token))
+        # # Pilha de criação de infraestrutura dentro do OSM
 
-        # SERÁ CRIADA UM VIM PARA CADA LABORATORIO
-        # Descobrir como passar de modo seguro  a senha e o usuário da conta LABVER
-        # para criação desta VIM
-        # Passar o nome do projeto do novo laboratorio 
-        # openstackUser = Usuário com poder de criação dentro do projeto criado
-        # openstackPass = Senha do usuário
-        # labProject = Nome do Projeto criado para o laboratorio
+        # # SERÁ CRIADA UM VIM PARA CADA LABORATORIO
+        # # Descobrir como passar de modo seguro  a senha e o usuário da conta LABVER
+        # # para criação desta VIM
+        # # Passar o nome do projeto do novo laboratorio 
+        # # openstackUser = Usuário com poder de criação dentro do projeto criado
+        # # openstackPass = Senha do usuário
+        # # labProject = Nome do Projeto criado para o laboratorio
 
-        # vimId = OSMvim.create_vim(token["id"], openstackUser, openstackPass, labProject)
-        print('88888888888888888888888888888888888888888888888888888888888')
-        print(token)
-        teste = token['id']
-        vimAccountId = OSMvim.create_vim(teste)
-        # vimAccountId = {}
-        # vimAccountId["id"] = "8f3c0414-0ee7-4afe-a2bb-fe089433cdce"
-        # print(vimAccountId["id"])
+        # # vimId = OSMvim.create_vim(token["id"], openstackUser, openstackPass, labProject)
+        # print('88888888888888888888888888888888888888888888888888888888888')
 
-        nsd = OSMNS.create_nsd(REQUEST_POST)
-        nsdId = OSMNS.compose_ns(token, nsd)
-        nsName = REQUEST_POST['nome']
+        # vimAccountId = OSMvim.create_vim(token)
+        # # vimAccountId = {}
+        # # vimAccountId["id"] = "8f3c0414-0ee7-4afe-a2bb-fe089433cdce"
+        # print(vimAccountId)
+        # print('88888888888888888888888888888888888888888888888888888888888')
 
-        OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId["id"])
-        # return str(retorno)
+        # nsd = OSMNS.create_nsd(REQUEST_POST1)
+        # nsdId = OSMNS.compose_ns(token, nsd)
+        # nsName = REQUEST_POST['nome']
+
+        # OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId["id"])
+        # # return str(retorno)
         return 'Hello World isso é um teste!!!'
 
     @app.route('/createLaboratory/', methods=['POST', 'GET', 'DELETE'])
@@ -265,198 +391,12 @@ def main():
             print("POST")
 
         print("blabla")
-        return nsd
+        return False
 
     @app.route('/createNSD/', methods=['POST', 'GET', 'DELETE'])
     def createNSD():
-    # informações recebidas do FRONTEND    
-        # payload = {
-        #     "nome": "nomecanonicodolaboratorio",
-        #     "imagem": "desktop_padrao_vnfd",
-        #     "turma": "codigodauturma",
-        #     "instancias": 1,
-        #     "descricao": "descricao informativa do laboratorio",
-        #     "acessoainternet": True,
-        #     "funcoesderede": {
-        #         "vnf1": {
-        #             "imagem": "openwrt_vnfd",
-        #             "ordem": 0,
-        #             "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-        #         },
-        #     },
-        # }
 
-        # info_service = request.get_json()
-        # if request.method == 'POST':
-        #     print("CHEGOU POR POST "&info_service)
-        payload = REQUEST_POST
-        d={}
-        d['nsd:nsd-catalog']={}
-
-        nsd={}    
-        nsd["id"]="lab_nsdeumtesteamaisdiferente"
-        nsd["name"]=payload["nome"] #nsd["name"]="lab_nsd"
-        nsd["short-name"]=payload["nome"] #nsd["short-name"]="lab_nsd"
-        nsd["vendor"]="OSM"
-        nsd["description"]=payload["descricao"] #nsd["description"]="Laboratorio Padrao"
-        nsd["version"]="1.0"
-
-        vld={}
-        vld["short-name"]="dataNet"
-        vld["name"]="dataNet"    
-        vld["type"]="ELAN"
-        vld["ip-profile-ref"]="IP-t1"
-        vld["id"]="dataNet"
-        vld["vnfd-connection-point-ref"]=[]
-
-        # Aqui é onde haverá dinamicidade da criação dos desktops, repetição do bloco de texto
-        # para representar a quantidade de estações que serão disponibilizadas
-        # os desktops dos alunos tem endereçamento IP, importante resgatar do BANCO DE DADOS qual
-        # bloco de IP (rede) será usado
-        # já as funções de rede virtualizadas, não possuem enredeços de IP predeterminados neste
-        # momento ainda.
-
-        for x in range(1, (payload["instancias"]+1)):
-            vnfd_connection_point_ref={}
-            vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
-            vnfd_connection_point_ref["vnfd-id-ref"]=payload["imagem"]
-            vnfd_connection_point_ref["member-vnf-index-ref"]=10+x
-            vnfd_connection_point_ref["ip-address"]="10.10.10."+str(10+x) #
-            vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
-
-        for vnf in payload["funcoesderede"]:
-            vnfd_connection_point_ref={}
-            vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
-            vnfd_connection_point_ref["vnfd-id-ref"]=payload["funcoesderede"][vnf]["imagem"]    
-            vnfd_connection_point_ref["member-vnf-index-ref"]=100+payload["funcoesderede"][vnf]["ordem"]
-            vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
-
-        # vnfd_connection_point_ref={}
-        # vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
-        # vnfd_connection_point_ref["vnfd-id-ref"]="desktop_padrao_vnfd"
-        # vnfd_connection_point_ref["ip-address"]="10.10.10.11" # se for desktop, tem IP, se for VNF não
-
-        # vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
-
-        # já as funções de rede virtualizadas, não possuem enredeços de IP predeterminados neste
-        # momento ainda.
-    
-        nsd["vld"]=[]
-        nsd["vld"].append(vld)
-
-        ip_profiles={}
-        ip_profiles["description"]="Descricao do perfil de IP"
-        ip_profiles["name"]="IP-t1"
-        ip_profiles["ip-profile-params"]={}
-    
-        dhcp_params={}
-        dhcp_params["count"]=100
-        dhcp_params["enabled"]=True
-        dhcp_params["start-address"]="10.10.10.10"
-
-        ip_profiles["ip-profile-params"]["dhcp-params"]=dhcp_params
-        ip_profiles["ip-profile-params"]["dns-server"]=[]
-        dns_server={}
-        dns_server["address"]="8.8.8.8"
-        ip_profiles["ip-profile-params"]["dns-server"].append(dns_server)
-        
-        ip_profiles["ip-profile-params"]["gateway-address"]="10.10.10.1"
-        ip_profiles["ip-profile-params"]["ip-version"]="ipv4"
-        ip_profiles["ip-profile-params"]["subnet-address"]="10.10.10.0/24"
-        
-        constituent_vnfd=[]
-        cvnfd={}
-        #loop e append, quantas instancias e funções de rede virtualizadas houverem
-
-        for x in range(1, (payload["instancias"]+1)):
-            cvnfd={}
-            cvnfd["member-vnf-index"]=10+x
-            cvnfd["vnfd-id-ref"]=payload["imagem"]
-            constituent_vnfd.append(cvnfd)
-
-        for vnf in payload["funcoesderede"]:
-            cvnfd={}
-            cvnfd["member-vnf-index"]=100+payload["funcoesderede"][vnf]["ordem"]
-            cvnfd["vnfd-id-ref"]=payload["funcoesderede"][vnf]["imagem"]
-            constituent_vnfd.append(cvnfd)
-
-        # cvnfd["member-vnf-index"]=1
-        # cvnfd["vnfd-id-ref"]=1
-        # constituent_vnfd.append(cvnfd)
-
-        vnffgd={}
-        vnffgd["name"]= "vnffg1-name"
-        vnffgd["short-name"]= "vnffg1-sname"
-        vnffgd["vendor"]= "vnffg1-vendor"
-        vnffgd["description"]= "vnffg1-description"
-        vnffgd["id"]= "vnffg1"
-        vnffgd["version"]= "1.0"
-        vnffgd["rsp"]=[]
-        vnffgd["classifier"]=[]
-
-        rsp=[]
-        #loop para quantidade de funções de rede virutalizadas que o SFC irá seguir
-        for vnf in sorted(payload["funcoesderede"].values(),key=itemgetter('ordem')):
-            rsp_element={}
-            rsp_element["vnfd-id-ref"]=vnf["imagem"]    
-            rsp_element["member-vnf-index-ref"]=100+vnf["ordem"]
-            rsp_element["vnfd-ingress-connection-point-ref"]="vnf-data"
-            rsp_element["vnfd-egress-connection-point-ref"]="vnf-data"
-            rsp_element["order"]=vnf["ordem"]
-            rsp.append(rsp_element)
-            
-        # rsp_element={}
-        # rsp_element["vnfd-id-ref"]="openwrt_vnfd"
-        # rsp_element["member-vnf-index-ref"]=101
-        # rsp_element["vnfd-ingress-connection-point-ref"]="vnf-data"
-        # rsp_element["vnfd-egress-connection-point-ref"]="vnf-data"
-        # rsp_element["order"]=0
-        # rsp.append(rsp_element)
-
-        classifier={}
-
-        classifier["name"]="class1name"
-        classifier["vnfd-id-ref"]="desktop_padrao_vnfd"
-        classifier["vnfd-connection-point-ref"]="vnf-data"
-        classifier["member-vnf-index-ref"]=1
-        classifier["id"]="class1"
-        classifier["rsp-id-ref"]="rsp"
-        classifier["match-attributes"]=[]
-
-        classifier_match_att={}
-        classifier_match_att["destination-port"]="5001:5011"
-        classifier_match_att["id"]="match1"
-        classifier_match_att["ip-proto"]=17
-        classifier_match_att["source-ip-address"]="10.10.10.11"
-
-        classifier["match-attributes"].append(classifier_match_att)
-
-        vnffgd["rsp"].append(rsp)
-        vnffgd["classifier"].append(classifier)
-
-        nsd["ip-profiles"]=[]
-        nsd["ip-profiles"].append(ip_profiles)
-
-        nsd["constituent-vnfd"]=constituent_vnfd
-        # nsd["constituent_vnfd"].append()
-
-        nsd["vnffgd"]=[]
-        nsd["vnffgd"].append(vnffgd)
-
-        d['nsd:nsd-catalog']["nsd"]=[]
-        d['nsd:nsd-catalog']["nsd"].append(nsd)
-
-        # d['chave1']='1'
-        # print(d)
-
-        token = benedict.from_yaml(tokens.create_token())
-        # print(token["id"])
-        json_object = json.dumps(d, indent = 4)
-        print(json_object)
-        #token["id"]
-        # retorno = OSMNS.create_nsd(json_object)
-        # print(json_object)
-        return str(json_object)
+        return False
 
     @app.route('/listImages/', methods=['POST', 'GET', 'DELETE'])
     def listImages():
@@ -475,65 +415,7 @@ def main():
 
     @app.route('/osm/criarnetworkservice/', methods=['POST', 'GET', 'DELETE'])
     def osmNS():
-        token = tokens.create_token()
-        print(token)
-        d = benedict.from_yaml(token)
-        networkService={}
-
-        # as opções dos DESKTOPs JA EXISTEm
-        # As VNFs já EXISTEM
-        # é necessário montar o NETWORKSERVICE
-        # INFORMAÇÕES DO PORTAL DO PROFESSOR
-        # NECESSÁRIO A INFORMAÇÃO DA SEQUENCIA DAS VNFS
-        # 
-    # informações recebidas do FRONTEND    
-        payload = {
-            'nome': "nomecanonicodolaboratorio",
-            "imagem": "nomedoVNFdesktop",
-            "turma": "codigodauturma",
-            "instancias": 10,
-            "descricao": "descrição informativa do laboratorio",
-            "acessoainternet": True,
-            "funcoesderede": {
-                "vnf1": {
-                    "imagem": "nomedoVNFdafuncaoderede",
-                    "ordem": 1,
-                    "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-                },
-                "vnf2": {
-                    "imagem": "nomedoVNFdafuncaoderede",
-                    "ordem": 6,
-                    "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-                },
-                "vnf3": {
-                    "imagem": "nomedoVNFdafuncaoderede",
-                    "ordem": 0,
-                    "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-                },
-                "vnf4": {
-                    "imagem": "nomedoVNFdafuncaoderede",
-                    "ordem": 3,
-                    "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-                },
-            },
-        }
-
-        # for vnf in sorted(payload["funcoesderede"].values(),key=itemgetter('ordem')):
-        #     print(vnf["ordem"])
-
-        teste = OSMNS.create_nsd(payload)
-        return teste    
-    #     for key in a_dict:
-    # ...     print(key, '->', a_dict[key])
-
-        # OSMvim.create_vim(token["id"])
-        # vimcreate_vim("tete")
-        vim_ = OSMvim.get_vim_accounts(d["_id"])
-        # tipo =  str(type(token))
-        print(vim_)
-        return (vim_)
-        # return d["_id"]
-        # return type(token)
+        return False
 
     @app.route('/listarprojetos/', methods=['POST', 'GET', 'DELETE'])
     def listarprojetos():

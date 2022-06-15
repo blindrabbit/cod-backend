@@ -4,7 +4,8 @@ from urls import *
 def create_token(project_id='admin'):
 
     headers = {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
     }
 
     payload = {
@@ -16,7 +17,7 @@ def create_token(project_id='admin'):
     response = requests.request(method="POST", url=url_token_osm, headers=headers,
                                 json=payload, verify=False)
 
-    return response.text
+    return response.json()
 
 
 def get_token_info(token):
@@ -31,6 +32,7 @@ def get_token_info(token):
         'Accept': 'application/json',
         "Authorization": 'Bearer '+token
     }
-    print(token)
+
     response = requests.request("GET", url, headers=headers, data=payload,verify=False)
-    return response.text
+    
+    return response.json()

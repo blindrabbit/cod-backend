@@ -1,10 +1,11 @@
 import requests
-from sqlalchemy import false, null
+# from sqlalchemy import false, null
 from urls import *
 from operator import itemgetter
 
 def instantiate_ns(token, nsName, nsdId, vimAccountId ):
     nsDescription = 'incluir uma descrição?'
+    token = token.replace('\r','')
 
     headers = {
         'Content-Type': 'application/json',
@@ -55,6 +56,7 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId ):
     return response.text
 
 def compose_ns(token, json):
+    token = token.replace('\r','')
     payload = json
 
     method_osm = "/nsd/v1/ns_descriptors_content/"
@@ -94,13 +96,13 @@ def create_vnffgd(json):
     rsp['name'] = 'rspname'
     rsp['vnfd-connection-point-ref'] = []
 
-    for vnf in sorted(payload.values(),key=itemgetter('ordem')):
+    for vnf in sorted(payload.values(),key=itemgetter('order')):
         rsp_element={}
-        rsp_element["vnfd-id-ref"]=vnf["imagem"]    
-        rsp_element["member-vnf-index-ref"]=100+vnf["ordem"]
+        rsp_element["vnfd-id-ref"]=vnf["image"]    
+        rsp_element["member-vnf-index-ref"]=100+vnf["order"]
         rsp_element["vnfd-ingress-connection-point-ref"]="vnf-data"
         rsp_element["vnfd-egress-connection-point-ref"]="vnf-data"
-        rsp_element["order"]=vnf["ordem"]
+        rsp_element["order"]=vnf["order"]
         rsp['vnfd-connection-point-ref'].append(rsp_element)
 
 #TODO - ATENÇÃO - ASSIM QUE CRIAR OS OBJETOS, VOU TER DE REESCREVER ESTE TRECHO, 
@@ -139,10 +141,10 @@ def create_nsd(json):
 
     nsd={}    
     nsd["id"]="lab_nsdeumtesteamaisdiferente" # usar o ID que vai ser criado no BANCO
-    nsd["name"]=payload["nome"] #nsd["name"]="lab_nsd"
-    nsd["short-name"]=payload["nome"] #nsd["short-name"]="lab_nsd"
+    nsd["name"]=payload["name"] #nsd["name"]="lab_nsd"
+    nsd["short-name"]=payload["name"] #nsd["short-name"]="lab_nsd"
     nsd["vendor"]="OSM"
-    nsd["description"]=payload["descricao"] #nsd["description"]="Laboratorio Padrao"
+    nsd["description"]=payload["description"] #nsd["description"]="Laboratorio Padrao"
     nsd["version"]="1.0"
 
     vld={}
@@ -160,19 +162,19 @@ def create_nsd(json):
     # já as funções de rede virtualizadas, não possuem enredeços de IP predeterminados neste
     # momento ainda.
 
-    for x in range(1, (payload["instancias"]+1)):
+    for x in range(1, (payload["instances"]+1)):
         vnfd_connection_point_ref={}
         vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
-        vnfd_connection_point_ref["vnfd-id-ref"]=payload["imagem"]
+        vnfd_connection_point_ref["vnfd-id-ref"]=payload["image"]
         vnfd_connection_point_ref["member-vnf-index-ref"]=10+x
         vnfd_connection_point_ref["ip-address"]="10.10.10."+str(10+x) #
         vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
 
-    for vnf in payload["funcoesderede"]:
+    for vnf in payload["networkfunctions"]:
         vnfd_connection_point_ref={}
         vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
-        vnfd_connection_point_ref["vnfd-id-ref"]=payload["funcoesderede"][vnf]["imagem"]    
-        vnfd_connection_point_ref["member-vnf-index-ref"]=100+payload["funcoesderede"][vnf]["ordem"]
+        vnfd_connection_point_ref["vnfd-id-ref"]=payload["networkfunctions"][vnf]["image"]    
+        vnfd_connection_point_ref["member-vnf-index-ref"]=100+payload["networkfunctions"][vnf]["order"]
         vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
 
     # vnfd_connection_point_ref={}
@@ -210,18 +212,18 @@ def create_nsd(json):
     
     constituent_vnfd=[]
     cvnfd={}
-    #loop e append, quantas instancias e funções de rede virtualizadas houverem
+    #loop e append, quantas instances e funções de rede virtualizadas houverem
 
-    for x in range(1, (payload["instancias"]+1)):
+    for x in range(1, (payload["instances"]+1)):
         cvnfd={}
         cvnfd["member-vnf-index"]=10+x
-        cvnfd["vnfd-id-ref"]=payload["imagem"]
+        cvnfd["vnfd-id-ref"]=payload["image"]
         constituent_vnfd.append(cvnfd)
 
-    for vnf in payload["funcoesderede"]:
+    for vnf in payload["networkfunctions"]:
         cvnfd={}
-        cvnfd["member-vnf-index"]=100+payload["funcoesderede"][vnf]["ordem"]
-        cvnfd["vnfd-id-ref"]=payload["funcoesderede"][vnf]["imagem"]
+        cvnfd["member-vnf-index"]=100+payload["networkfunctions"][vnf]["order"]
+        cvnfd["vnfd-id-ref"]=payload["networkfunctions"][vnf]["image"]
         constituent_vnfd.append(cvnfd)
 
     nsd["ip-profiles"]=[]
@@ -230,7 +232,7 @@ def create_nsd(json):
     nsd["constituent-vnfd"]=constituent_vnfd
     # nsd["constituent_vnfd"].append()
 
-    vnffgd = create_vnffgd(payload["funcoesderede"])
+    vnffgd = create_vnffgd(payload["networkfunctions"])
 
     nsd["vnffgd"]=[]
     nsd["vnffgd"].append(vnffgd)
