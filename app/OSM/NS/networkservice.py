@@ -3,6 +3,39 @@ import requests
 from urls import *
 from operator import itemgetter
 
+def delete_instantiate_ns(token, nsdId_instance):
+# /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource
+# /nslcm/v1/ns_instances/{nsInstanceId}/terminate
+    token = token.replace('\r','')
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        "Authorization": 'Bearer ' + token
+    }
+
+    method_osm = "/nslcm/v1/ns_instances/"+nsdId_instance+"/terminate"
+    url = url_osm+method_osm    
+
+    payload = {
+        "autoremove": True
+    }
+
+    response = requests.request(
+        method="POST", url=url, headers=headers, json=payload, verify=False)
+
+    method_osm = "/nslcm/v1/ns_instances/"+nsdId_instance
+    url = url_osm+method_osm    
+
+    payload = {
+    }
+
+    response = requests.request(
+        method="DELETE", url=url, headers=headers, data=payload, verify=False)
+
+    return response.text
+
+
 def instantiate_ns(token, nsName, nsdId, vimAccountId ):
     nsDescription = 'incluir uma descrição?'
     token = token.replace('\r','')
@@ -26,6 +59,7 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId ):
     response = requests.request(
         method="POST", url=url, headers=headers, json=payload, verify=False)
 
+    print('+++++++++++++++++++++++++++++++++++++++++')
     print(response.json())
     id_json = response.json()
     id = id_json['id']
@@ -232,10 +266,12 @@ def create_nsd(json):
     nsd["constituent-vnfd"]=constituent_vnfd
     # nsd["constituent_vnfd"].append()
 
-    vnffgd = create_vnffgd(payload["networkfunctions"])
+    #DESABILITANDO A UTILIZAÇÃO DO SFC NESTE MOMENTO
 
-    nsd["vnffgd"]=[]
-    nsd["vnffgd"].append(vnffgd)
+    # vnffgd = create_vnffgd(payload["networkfunctions"])
+
+    # nsd["vnffgd"]=[]
+    # nsd["vnffgd"].append(vnffgd)
 
     d['nsd:nsd-catalog']["nsd"]=[]
     d['nsd:nsd-catalog']["nsd"].append(nsd)

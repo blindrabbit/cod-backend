@@ -65,10 +65,14 @@ def main():
         connection_openstack = create_connection_openstack_clouds_file(cloud)
         
         laboratory_from_bd = Laboratory.get_or_none(Laboratory.id_laboratory==laboratory_id)
-
+        # laboratory_from_bd.
         project_from_bd = Project.get_or_none(Project.id_laboratory==laboratory_id)
 
+        networkservice_from_bd = Networkservice.get_or_none(Networkservice.fk_project==project_from_bd.id_project)
+
         if laboratory_from_bd:
+            nsd_instance = OSMNS.delete_instantiate_ns(networkservice_from_bd.id_osm_ns_instance)
+            # .create_nsd(REQUEST_POST1)
             delete_router(project_from_bd.openstack_id_router,
                           project_from_bd.openstack_id_router_gateway_port, 
                           connection_openstack)
@@ -82,7 +86,7 @@ def main():
     def create_laboratory():
         cloud = 'openstack-serra'
         payload = REQUEST_POST1
-        undo=''
+        undo={}
         try:
             if Laboratory.get_or_none(Laboratory.name==payload['name']):
                 return "ja tem com esse nome"
@@ -95,12 +99,12 @@ def main():
                 fk_user = User.select().where(User.id_user=='1234567890')
             )
             # print(laboratory_to_bd['id_laboratory'])
-            undo['laboratory_to_bd']=True#laboratory_to_bd['id_laboratory']
+            undo['laboratory_to_bd']=True #laboratory_to_bd['id_laboratory']
 
             connection_openstack = create_connection_openstack_clouds_file(cloud)
 
             username = 'renancs'
-            project_name = LABVER_PREFIX+'labteste01'
+            project_name = LABVER_PREFIX+payload['name']
             description = payload['description']
             conn = connection_openstack
 
@@ -164,19 +168,23 @@ def main():
 
             if user_from_bd.token_OSM == '':
                 token = tokens.create_token()
-                token = str(token['id'])
-                user_from_bd.token_OSM=token
+                user_from_bd.token_OSM=str(token['id'])
                 user_from_bd.save()
             else:
-                token = tokens.get_token_info(user_from_bd.token_OSM)
-                if "code" in token:
-                    if token['code'] == 'UNAUTHORIZED':
+                tokenInfo = tokens.get_token_info(user_from_bd.token_OSM)
+                if "_id" in tokenInfo:
+                    token = tokenInfo['_id']
+                if "code" in tokenInfo:
+                    if tokenInfo['code'] == 'UNAUTHORIZED':
                         token = tokens.create_token()
-                        token = str(token['id'])
-                        user_from_bd.token_OSM=token
+                        user_from_bd.token_OSM=str(token['id'])
                         user_from_bd.save()
-
+            
+            print('TOKEN VALUE:',token)
             vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
+
+            vimAccountId={}
+
             if not vimAccount:
                 vimAccountId = OSMvim.create_vim(token, project_name)
             else:
@@ -184,13 +192,14 @@ def main():
 
             nsd = OSMNS.create_nsd(REQUEST_POST1)
             nsdId = OSMNS.compose_ns(token, nsd)
-            nsName = REQUEST_POST['nome']
+            nsName = project_name
 
             nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
 
             networkservice_to_bd = Networkservice.create(            
                 id_networkservice = nsdId,
                 id_osm_nsd = nsdId,
+                id_osm_ns_instance = nsdId_instance['id'],
                 id_osm_vim = vimAccountId['id'],
                 fk_project = project['id'] #
                 # # parei aqui, fk_project = project['id'],
@@ -198,100 +207,100 @@ def main():
             )
             networkservice_to_bd.save()
 
-            print("================================================================")
-            print(nsdId, nsdId_instance)
+            # print("================================================================")
+            # print(nsdId, nsdId_instance)
             return link
 
         except Exception as error:
-
-            print("falha")
-            # openstack
-            # remover router
             if 'create_router_openstack' in undo:
                 delete_router(undo['create_router_openstack'], undo['create_port_openstack'], connection_openstack)
             
             if 'create_network_openstack' in undo:
                 delete_network(undo['create_network_openstack'], connection_openstack)
-            # undo['create_router_openstack']=router['id']
             
             if 'create_project_openstack' in undo:
                 delete_project(undo['create_project_openstack'], connection_openstack)
-            # undo['laboratory_to_bd']=laboratory_to_bd
             
             if 'laboratory_to_bd' in undo:
                 laboratory_to_bd.delete_instance(recursive=True)
-        #         laboratory_from_bd = Laboratory.get_or_none(Laboratory.id_laboratory==laboratory_to_bd['id_laboratory'])
-        #         laboratory_from_bd.delete_instance(recursive=True)
 
-            
-        #     undo['laboratory_to_bd']=laboratory_to_bd
-            
-        #     undo['project_to_bd']=project['id']
-        #     undo['create_project_openstack']=project['id']
-            
-        #     undo['project_to_bd']=project['id']
-
-        #     undo['create_network_openstack']=network['id']
-            
-        #     laboratory_from_bd = Laboratory.get_or_none(Laboratory.id_laboratory==laboratory_id)
-
-        #            project_from_bd = Project.get_or_none(Project.id_laboratory==laboratory_id)
-
-        # if laboratory_from_bd:
-        #     delete_router(project_from_bd.openstack_id_router,
-        #                   project_from_bd.openstack_id_router_gateway_port, 
-        #                   connection_openstack)
-        #     delete_network(project_from_bd.openstack_id_network, connection_openstack)
-        #     delete_project(project_from_bd.id_project, connection_openstack)
-        #     laboratory_from_bd.delete_instance(recursive=True)
-            # remover rede            
-            # def delete_network(network_id, conn):
-
-            # remover projeto
-            # def delete_project(project_id, conn):
-
-
-            #bd
-            # remover projeto
-            # projeto_from_bd.delete_instance(recursive=True)
-
-            # remover laboratorio            
-            # laboratory_from_bd.delete_instance(recursive=True)
-            return jsonify({'error': error})
-
-
+            return (str("error"))
 
     @app.route('/testemodel')
     def testemodel():
         a = 10 + 10
+        token = '0BsoPPxBCjdIpj8qXyRYdLVEE1ipAa39'
+        id_osm_ns_instance='cbd98113-2a4d-4fce-b6aa-9ae1f20b5246'
+        returno = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
+        print(returno)
+        # query = (Tweet
+        #     .select(Tweet.content, fn.COUNT(Favorite.id).alias('count'))
+        #     .join(User)  # Join from tweet -> user.
+        #     .switch(Tweet)  # Move "join context" back to tweet.
+        #     .join(Favorite, JOIN.LEFT_OUTER)  # Join from tweet -> favorite.
+        #     .where(User.username == 'huey')
+        #     .group_by(Tweet.content))
+        # labId = 28
+        # query = (Laboratory
+        #     .select()
+        #     .join(Project)
+        #     .join(Networkservice)
+        #     .where(Laboratory.id_laboratory==labId))
 
-        user_from_bd = User.get_by_id('1234567890')
 
-        if user_from_bd.token_OSM == '':
-            token = tokens.create_token()
-            token = str(token['id'])
-            user_from_bd.token_OSM=token
-            user_from_bd.save()
-        else:
-            token = tokens.get_token_info(user_from_bd.token_OSM)
-            if "code" in token:
-                if token['code'] == 'UNAUTHORIZED':
-                    token = tokens.create_token()
-                    token = str(token['id'])
-                    user_from_bd.token_OSM=token
-                    user_from_bd.save()
+        # for lab in query:
+        #     print('blabla')
+        #     print(lab.name)
 
-        vimName = 'vim1'
+
+        # user_from_bd = User.get_by_id('1234567890')
+        # if user_from_bd.token_OSM == '':
+        #     token = tokens.create_token()
+        #     user_from_bd.token_OSM=str(token['id'])
+        #     user_from_bd.save()
+        # else:
+        #     tokenInfo = tokens.get_token_info(user_from_bd.token_OSM)
+        #     if "_id" in tokenInfo:
+        #         token = tokenInfo['_id']
+        #     if "code" in tokenInfo:
+        #         if tokenInfo['code'] == 'UNAUTHORIZED':
+        #             token = tokens.create_token()
+        #             user_from_bd.token_OSM=str(token['id'])
+        #             user_from_bd.save()
+
         
-        project_name = LABVER_PREFIX+'labteste01'
+        # project_name = LABVER_PREFIX+'labteste01'
 
-        print('>>>>>>>>>>>>>>>>>>>>>',token)
+        # vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
 
-        vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
-        if not vimAccount:
-            vimAccountId = OSMvim.create_vim(token, project_name)
-        else:
-            vimAccountId = vimAccount['_id']
+        # print(vimAccount)
+        #  user_from_bd = User.get_by_id('1234567890')
+
+        # if user_from_bd.token_OSM == '':
+        #     token = tokens.create_token()
+        #     token = str(token['id'])
+        #     user_from_bd.token_OSM=token
+        #     user_from_bd.save()
+        # else:
+        #     token = tokens.get_token_info(user_from_bd.token_OSM)
+        #     if "code" in token:
+        #         if token['code'] == 'UNAUTHORIZED':
+        #             token = tokens.create_token()
+        #             token = str(token['id'])
+        #             user_from_bd.token_OSM=token
+        #             user_from_bd.save()
+
+        # vimName = 'vim1'
+        
+        # project_name = LABVER_PREFIX+'labteste01'
+
+        # print('>>>>>>>>>>>>>>>>>>>>>',token)
+
+        # vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
+        # if not vimAccount:
+        #     vimAccountId = OSMvim.create_vim(token, project_name)
+        # else:
+        #     vimAccountId = vimAccount['_id']
 
  
         # laboratory_to_bd = Laboratory(
@@ -328,7 +337,7 @@ def main():
         #     ).on_conflict('replace').execute()
 
 
-        return 'Vamos testar o modelo! -->'+str(vimAccountId)
+        return 'Vamos testar o modelo! -->'#+str(vimAccountId)
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():

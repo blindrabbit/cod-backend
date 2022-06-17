@@ -120,6 +120,7 @@ class Constituent_vnfd(BaseModel):
 class Networkservice(BaseModel):
     id_networkservice = BigIntegerField(primary_key=True, unique=True,
             constraints=[SQL('AUTO_INCREMENT')])
+    id_osm_ns_instance = CharField(max_length=100)
     id_osm_nsd = CharField(max_length=100)
     id_osm_vim = CharField(max_length=100)
     creation_date = DateTimeField(default=datetime.now)
