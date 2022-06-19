@@ -63,22 +63,41 @@ def main():
         cloud = 'openstack-serra'
 
         connection_openstack = create_connection_openstack_clouds_file(cloud)
-        
-        laboratory_from_bd = Laboratory.get_or_none(Laboratory.id_laboratory==laboratory_id)
-        # laboratory_from_bd.
-        project_from_bd = Project.get_or_none(Project.id_laboratory==laboratory_id)
 
-        networkservice_from_bd = Networkservice.get_or_none(Networkservice.fk_project==project_from_bd.id_project)
+        laboratory_from_bd = (Laboratory
+            .select(Laboratory, User, Project, Networkservice)
+            .join(User)
+            .join(Project)
+            .join(Networkservice)
+            .where(Laboratory.id_laboratory==laboratory_id))
 
-        if laboratory_from_bd:
-            nsd_instance = OSMNS.delete_instantiate_ns(networkservice_from_bd.id_osm_ns_instance)
-            # .create_nsd(REQUEST_POST1)
-            delete_router(project_from_bd.openstack_id_router,
-                          project_from_bd.openstack_id_router_gateway_port, 
+        laboratory = laboratory_from_bd.dicts().get()
+
+        token = laboratory['token_OSM']
+        tokenInfo = tokens.get_token_info(token)
+        if 'code' in tokenInfo:
+            if tokenInfo['code'] == 'UNAUTHORIZED': # token gravado não existe mais, renovar
+                token = tokens.create_token()
+
+        if laboratory:
+
+            return_del_ns_instance = OSMNS.delete_ns_instantiate(token, laboratory['id_osm_ns_instance'])
+            print(return_del_ns_instance)
+
+            return_del_nsd = OSMNS.delete_nsd(token, laboratory['id_osm_nsd'])
+            print(return_del_nsd)
+
+            return_del_vim = OSMvim.delete_vim(token, laboratory['id_osm_vim'])
+            print(return_del_vim)
+
+            delete_router(laboratory['openstack_id_router'],
+                          laboratory['openstack_id_router_gateway_port'], 
                           connection_openstack)
-            delete_network(project_from_bd.openstack_id_network, connection_openstack)
-            delete_project(project_from_bd.id_project, connection_openstack)
-            laboratory_from_bd.delete_instance(recursive=True)
+            delete_network(laboratory['openstack_id_network'], connection_openstack)
+            return_del_project = delete_project(laboratory['id_project'], connection_openstack)
+
+            laboratory_from_bd.get().delete_instance(recursive=True)
+
 
         return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
 
@@ -100,6 +119,7 @@ def main():
             )
             # print(laboratory_to_bd['id_laboratory'])
             undo['laboratory_to_bd']=True #laboratory_to_bd['id_laboratory']
+            print('laboratory_to_bd')
 
             connection_openstack = create_connection_openstack_clouds_file(cloud)
 
@@ -111,6 +131,7 @@ def main():
             project = create_project(username, project_name, description, conn)
             
             undo['create_project_openstack']=project['id']
+            print('create_project_openstack')
 
             project_to_bd = Project.create(
                 id_project =  project['id'],
@@ -121,10 +142,12 @@ def main():
             )
 
             undo['project_to_bd']=project['id']
+            print('project_to_bd')
 
             network = create_network(LABVER_PREFIX+'rede-data', project['id'], connection_openstack)
 
             undo['create_network_openstack']=network['id']
+            print('create_network_openstack')
 
             cidr = '10.'+ str(randint(0, 254))+'.'+str(randint(0, 254))+'.0/24'
             gateway = cidr.replace('.0/24','.1')
@@ -132,21 +155,23 @@ def main():
             subnetwork = create_subnet(network['id'], LABVER_PREFIX+'subrede-data', 4, cidr, 
             gateway, connection_openstack)
 
-            router_gateway_port = connection_openstack.create_port(
-                    network_id = network['id'],
-                    name = LABVER_PREFIX+'porta_roteador',
-                    admin_state_up = True,
-                    fixed_ips = [
-                                {"ip_address": gateway, "subnet_id": subnetwork['id']},
-                                ])
+            router_gateway_port = create_port(
+                network['id'],
+                LABVER_PREFIX+'porta_roteador',
+                gateway,
+                subnetwork['id'],
+                connection_openstack
+            )
 
             undo['create_port_openstack']=router_gateway_port['id']
+            print('create_port_openstack')
 
-            provider_networt = connection_openstack.get_network('provider')
+            provider_network = get_network_by_name('provider', connection_openstack)
 
-            router = create_router(LABVER_PREFIX+'roteador', provider_networt['id'], project['id'], connection_openstack)
+            router = create_router(LABVER_PREFIX+'roteador', provider_network['id'], project['id'], connection_openstack)
 
             undo['create_router_openstack']=router['id']
+            print('create_router_openstack')
 
             connection_openstack.add_router_interface(router=router,
                                                     subnet_id=subnetwork['id'],
@@ -170,6 +195,7 @@ def main():
                 token = tokens.create_token()
                 user_from_bd.token_OSM=str(token['id'])
                 user_from_bd.save()
+                token=str(token['id'])
             else:
                 tokenInfo = tokens.get_token_info(user_from_bd.token_OSM)
                 if "_id" in tokenInfo:
@@ -179,6 +205,7 @@ def main():
                         token = tokens.create_token()
                         user_from_bd.token_OSM=str(token['id'])
                         user_from_bd.save()
+                        token=str(token['id'])
             
             print('TOKEN VALUE:',token)
             vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
@@ -190,11 +217,21 @@ def main():
             else:
                 vimAccountId['id'] = vimAccount['_id']
 
+            undo['OSMvim_create_vim']=vimAccountId['id']
+            print('OSMvim_create_vim')
+
             nsd = OSMNS.create_nsd(REQUEST_POST1)
             nsdId = OSMNS.compose_ns(token, nsd)
             nsName = project_name
 
+            undo['OSMNS_compose_ns']=nsdId
+            print('OSMNS_compose_ns')
+
             nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
+
+            print(nsdId_instance)
+            undo['OSMNS_instantiate_ns']=nsdId_instance
+            print('OSMNS_instantiate_ns')
 
             networkservice_to_bd = Networkservice.create(            
                 id_networkservice = nsdId,
@@ -212,37 +249,122 @@ def main():
             return link
 
         except Exception as error:
-            if 'create_router_openstack' in undo:
-                delete_router(undo['create_router_openstack'], undo['create_port_openstack'], connection_openstack)
-            
-            if 'create_network_openstack' in undo:
-                delete_network(undo['create_network_openstack'], connection_openstack)
-            
-            if 'create_project_openstack' in undo:
+
+            if 'OSMNS_instantiate_ns' in undo:
+
+                print('apagar no OSM network service Instance')
+                OSMNS.delete_instantiate_ns(token, undo['OSMNS_instantiate_ns'])
+
+            # undo['create_vim']=vimAccountId['id']
+
+            else:
+
+            # undo['create_vim']=vimAccountId['id']
+            # undo['OSMNS.instantiate_ns']=nsdId_instance
+
+                if 'create_router_openstack' in undo:
+                    print('apagar roteador')
+                    delete_router(undo['create_router_openstack'], undo['create_port_openstack'], connection_openstack)
+                
+                if 'create_network_openstack' in undo:
+                    print('apagar network')
+                    delete_network(undo['create_network_openstack'], connection_openstack)
+                
+                if 'OSMNS_compose_ns' in undo:
+                    print('apagar no OSM network service Descriptor')
+                    OSMNS.delete_nsd(token, undo['OSMNS_compose_ns'])
+
+                if 'OSMvim_create_vim' in undo:
+                    print('apagar no OSM VIM')
+                    OSMvim.delete_vim(token, undo['OSMvim_create_vim'])
+
+            if 'ERROcreate_project_openstack' in undo:
+                print('apagar projeto')
                 delete_project(undo['create_project_openstack'], connection_openstack)
             
             if 'laboratory_to_bd' in undo:
+                print('apagar laboratorio no banco de dados')
                 laboratory_to_bd.delete_instance(recursive=True)
 
-            return (str("error"))
+            return jsonify(error)
 
     @app.route('/testemodel')
     def testemodel():
         a = 10 + 10
-        token = '0BsoPPxBCjdIpj8qXyRYdLVEE1ipAa39'
-        id_osm_ns_instance='cbd98113-2a4d-4fce-b6aa-9ae1f20b5246'
-        returno = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
-        print(returno)
-        # query = (Tweet
-        #     .select(Tweet.content, fn.COUNT(Favorite.id).alias('count'))
-        #     .join(User)  # Join from tweet -> user.
-        #     .switch(Tweet)  # Move "join context" back to tweet.
-        #     .join(Favorite, JOIN.LEFT_OUTER)  # Join from tweet -> favorite.
-        #     .where(User.username == 'huey')
-        #     .group_by(Tweet.content))
-        # labId = 28
-        # query = (Laboratory
+
+        laboratory_id = 57
+
+        laboratory_from_bd = (Laboratory
+            .select(Laboratory, User, Project, Networkservice)
+            .join(User)
+            .join(Project)
+            .join(Networkservice)
+            .where(Laboratory.id_laboratory==laboratory_id))
+
+        print('<><><><><><><><><<>><><><><><><><><><><><><><>')
+        laboratory = laboratory_from_bd.dicts().get()
+        
+        print(',.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,')
+        laboratory_from_bd.get().delete_instance(recursive=True)
+
+
+        print(laboratory['id_laboratory'])
+        # token = 'hl5mC3C9EEYoBQLSd45l263QypVp3prk'
+        # id_osm_ns_instance='76929e1f-5281-4dd1-b691-aa469bc9867c'
+        # # id_osm_ns_instance='0d22cc4e-b8d4-4756-9f08-5923e70907b6'715a857f-0284-4c2d-ab6f-aedd26742c8f
+        # id_osm_ns_instance='715a857f-0284-4c2d-ab6f-aedd26742c8f'
+
+        # return_ns_resource = OSMNS.get_ns_resource(token, id_osm_ns_instance)
+        # print('---------------------------------------------')
+        # print(return_ns_resource)
+
+        # # return_del_instance = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
+            
+        # print('---------------------------------------------')
+        # # print(return_del_instance)
+        # # laboratory_id = 47
+
+        # # # query = (User
+        # # #     .select()
+        # # #     .join(Laboratory)
+        # # #     .where(Laboratory.id_laboratory==laboratory_id))
+
+        # # # for user in query:
+        # # #     token = user.token_OSM
+
+        # # query = (Laboratory
+        #     .select(Laboratory, User, Project, Networkservice)
+        #     .join(User)
+        #     .join(Project)
+        #     .join(Networkservice)
+        #     .where(Laboratory.id_laboratory==laboratory_id)
+        #     # .dicts()
+        #     .get())
+
+
+        # print('query--------------------------------------------------')
+        # print(type(query))
+        # print('query--------------------------------------------------')
+        # print(query)
+        # print('query-id_laboratory-------------------------------------------------')
+        # print(query.id_laboratory)
+        # print('query-id_osm_vim-------------------------------------------------')
+        # print(query.id_osm_vim)
+            
+        
+        # for lab in query:
+        #     print(type(lab))
+        #     print(lab)
+            
+        #     # laboratory = lab
+        
+        # print(str(laboratory.id_laboratory))
+        # returno = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
+        # print(returno)
+        # labId = 47
+        # query = (User
         #     .select()
+        #     .join(Laboratory)
         #     .join(Project)
         #     .join(Networkservice)
         #     .where(Laboratory.id_laboratory==labId))
@@ -250,7 +372,7 @@ def main():
 
         # for lab in query:
         #     print('blabla')
-        #     print(lab.name)
+        #     print(lab.token_OSM)
 
 
         # user_from_bd = User.get_by_id('1234567890')

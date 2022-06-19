@@ -7,6 +7,11 @@ import sys
 # conn = openstack.connect(cloud="devstack-admin")
 
 
+def get_network_by_name(network_name, conn):
+    network = conn.get_network(network_name)
+
+    return network
+
 def create_network(name_network, project_id, conn):
     network = conn.create_network(name = name_network, project_id = project_id)
     
@@ -68,6 +73,18 @@ def delete_network(network_id, conn):
             return True
 
     return False
+
+
+def create_port(network_id, port_name, port_ip, subnetwork_id, conn):
+
+    port = conn.create_port(
+        network_id = network_id,
+        name = port_name,
+        admin_state_up = True,
+        fixed_ips = [
+                    {"ip_address": port_ip, "subnet_id": subnetwork_id},
+                    ])
+    return port
 
 
 # print(example_network)

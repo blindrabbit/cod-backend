@@ -3,6 +3,29 @@ from urls import *
 # from benedict import benedict
 from env import *
 
+def delete_vim(token, vimId):
+# /admin/v1/vims/{vimId} Delete a VIM
+
+    if type(token) is dict:
+        tokenId=token['id']
+    else:
+        tokenId = token.replace('\r','')
+
+    method_osm = "/admin/v1/vims/"+vimId
+    url = url_osm+method_osm
+    payload = {}
+    # token = token.replace('\r','')
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        "Authorization": 'Bearer '+tokenId
+    }
+
+    response = requests.request("DELETE", url, headers=headers, data=payload,verify=False)
+
+    return response.text
+
 def get_vim_accounts(token):
     # GET /admin/v1/vims Query information about multiple VIMs
     method_osm = "/admin/v1/vims/"

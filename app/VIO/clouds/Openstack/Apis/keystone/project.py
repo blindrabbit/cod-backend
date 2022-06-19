@@ -15,11 +15,8 @@ def delete_project(project_id, conn):
 def create_project(username, project_name, description, conn):
 
     # CRIANDO O PROJETO
-
     project_openstack = conn.create_project(name=project_name, description=description,
                                             domain_id='default')
-
-    # print("MEU PROJETO", project_openstack)
 
     role = 'member'
     role = conn.identity.find_role(role)

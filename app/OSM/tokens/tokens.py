@@ -22,15 +22,19 @@ def create_token(project_id='admin'):
 
 def get_token_info(token):
     # /admin/v1/tokens/{tokenId} Query information about an individual Token
-    token = token.replace('\r','')
-    method_osm = "/admin/v1/tokens/"+token
+    if type(token) is dict:
+        tokenId=token['id']
+    else:
+        tokenId = token.replace('\r','')
+
+    method_osm = "/admin/v1/tokens/"+tokenId
     url = url_osm+method_osm
     payload = {}
 
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        "Authorization": 'Bearer '+token
+        "Authorization": 'Bearer '+tokenId
     }
 
     response = requests.request("GET", url, headers=headers, data=payload,verify=False)

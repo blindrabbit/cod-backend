@@ -3,15 +3,49 @@ import requests
 from urls import *
 from operator import itemgetter
 
-def delete_instantiate_ns(token, nsdId_instance):
+
+def get_ns_resource(token, nsInstanceId):
 # /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource
 # /nslcm/v1/ns_instances/{nsInstanceId}/terminate
-    token = token.replace('\r','')
+
+    nsInstanceId='76929e1f-5281-4dd1-b691-aa469bc9867c' #ns instance recuperado do OSM 
+    nsInstanceId='0d22cc4e-b8d4-4756-9f08-5923e70907b6' #ns instance retornado do comando de criação
+    nsInstanceId='7a8ecad4-6d21-4191-bd4f-43d322d89595' #ns descripts ID
+
+    if type(token) is dict:
+        tokenId=token['id']
+    else:
+        tokenId = token.replace('\r','')
 
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        "Authorization": 'Bearer ' + token
+        "Authorization": 'Bearer ' + tokenId
+    }
+
+    method_osm = "/nslcm/v1/ns_instances/"+nsInstanceId
+    url = url_osm+method_osm    
+
+    payload = {
+    }
+
+    response = requests.request(
+        method="GET", url=url, headers=headers, data=payload, verify=False)
+
+    return response.text
+
+def delete_ns_instantiate(token, nsdId_instance):
+# /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource
+# /nslcm/v1/ns_instances/{nsInstanceId}/terminate
+    if type(token) is dict:
+        tokenId=token['id']
+    else:
+        tokenId = token.replace('\r','')
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        "Authorization": 'Bearer ' + tokenId
     }
 
     method_osm = "/nslcm/v1/ns_instances/"+nsdId_instance+"/terminate"
@@ -25,6 +59,18 @@ def delete_instantiate_ns(token, nsdId_instance):
         method="POST", url=url, headers=headers, json=payload, verify=False)
 
     method_osm = "/nslcm/v1/ns_instances/"+nsdId_instance
+    url = url_osm+method_osm
+
+    finished = False
+    while finished == False:
+        response = requests.request(
+            method="GET", url=url, headers=headers, verify=False)
+        status = response.json()
+        if 'code' in status:
+            if status['code'] == 'NOT_FOUND':
+                finished = True
+
+    method_osm = "/nslcm/v1/ns_instances/"+nsdId_instance
     url = url_osm+method_osm    
 
     payload = {
@@ -36,14 +82,17 @@ def delete_instantiate_ns(token, nsdId_instance):
     return response.text
 
 
-def instantiate_ns(token, nsName, nsdId, vimAccountId ):
+def instantiate_ns(token, nsName, nsdId, vimAccountId):
     nsDescription = 'incluir uma descrição?'
-    token = token.replace('\r','')
+    if type(token) is dict:
+        tokenId=token['id']
+    else:
+        tokenId = token.replace('\r','')
 
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        "Authorization": 'Bearer ' + token
+        "Authorization": 'Bearer ' + tokenId
     }
 
     method_osm = "/nslcm/v1/ns_instances/"
@@ -59,23 +108,25 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId ):
     response = requests.request(
         method="POST", url=url, headers=headers, json=payload, verify=False)
 
-    print('+++++++++++++++++++++++++++++++++++++++++')
-    print(response.json())
-    id_json = response.json()
-    id = id_json['id']
+    # print('Before Instantiate +++++++++++++++++++++++++++++++++++++++++')
+    # print(response.json())
+    json = response.json()
 
-    method_osm = "/nslcm/v1/ns_instances/"+id+"/instantiate/"
+    method_osm = "/nslcm/v1/ns_instances/"+json['id']+"/instantiate/"
     url = url_osm+method_osm
 
     payload = {
         "nsName": nsName,
-        "nsdId": id,
+        "nsdId": json['id'],
         "vimAccountId": vimAccountId
     }
 
     response = requests.request(
         method="POST", url=url, headers=headers, json=payload, verify=False)
 
+    # print('After Instantiate +++++++++++++++++++++++++++++++++++++++++')
+    # print('nsdId ',json['id'])
+    # print(response.json())
     # method_osm = "/nslcm/v1/ns_instances/"+id
     # url = url_osm+method_osm    
 
@@ -87,10 +138,39 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId ):
     #     if status['nsState'] == 'READY':
     #         finished = True
 
+    return json
+
+def delete_nsd(token, nsdId):
+# /nsd/v1/ns_descriptors_content/{nsdInfoId} Delete an individual NS package resource    
+
+    if type(token) is dict:
+        tokenId=token['id']
+    else:
+        tokenId = token.replace('\r','')
+
+    headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        "Authorization": 'Bearer ' + tokenId
+    }
+
+    method_osm = "/nsd/v1/ns_descriptors_content/"+nsdId
+    url = url_osm+method_osm    
+
+    payload = {
+    }
+
+    response = requests.request(
+        method="DELETE", url=url, headers=headers, data=payload, verify=False)
+
     return response.text
 
 def compose_ns(token, json):
-    token = token.replace('\r','')
+    if type(token) is dict:
+        tokenId=token['id']
+    else:
+        tokenId = token.replace('\r','')
+
     payload = json
 
     method_osm = "/nsd/v1/ns_descriptors_content/"
@@ -99,7 +179,7 @@ def compose_ns(token, json):
     headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        "Authorization": 'Bearer ' + token
+        "Authorization": 'Bearer ' + tokenId
     }
 
     response = requests.request(
