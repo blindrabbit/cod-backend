@@ -2,10 +2,19 @@ import openstack
 from openstack .config import loader
 import sys
 
+from sqlalchemy import true
+
 # openstack.enable_logging(True, stream=sys.stdout)
 # config = loader.OpenStackConfig()
 # conn = openstack.connect(cloud="devstack-admin")
 
+
+def add_port_to_router(router, subnet_id, port_id, conn):
+
+    conn.add_router_interface(router=router,
+                              subnet_id=subnet_id,
+                              port_id=port_id)    
+    return True
 
 def get_network_by_name(network_name, conn):
     network = conn.get_network(network_name)

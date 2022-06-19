@@ -37,7 +37,7 @@ REQUEST_POST = {
 }
 
 REQUEST_POST1 = {
-    "name": "nomecanonicodolaboratorio",
+    "name": "teste xxx1",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
     "instances": 1,

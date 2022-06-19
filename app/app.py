@@ -99,7 +99,8 @@ def main():
             laboratory_from_bd.get().delete_instance(recursive=True)
 
 
-        return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
+        return '', 204
+        # return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
 
     @app.route('/create_laboratory')
     def create_laboratory():
@@ -107,28 +108,41 @@ def main():
         payload = REQUEST_POST1
         undo={}
         try:
-            if Laboratory.get_or_none(Laboratory.name==payload['name']):
+
+            user_name = 'renancs' # recuperar o nome do FRONTEND
+            user_id = '1234567890' # recuperar o ID do FRONTEND
+
+            laboratory_name = LABVER_PREFIX+payload['name']
+            laboratory_classroom = payload['classroom']
+            laboratory_description = payload['description']
+            laboratory_instances = payload['instances']
+
+            project_name = laboratory_name
+            project_description = laboratory_description
+
+            network_name = LABVER_PREFIX+'rede-data'
+            subnet_name = LABVER_PREFIX+'subrede-data'
+            router_gateway_port_name = LABVER_PREFIX+'porta_roteador'
+            router_name = LABVER_PREFIX+'roteador'
+
+            if Laboratory.get_or_none(Laboratory.name==laboratory_name):
                 return "ja tem com esse nome"
 
             laboratory_to_bd = Laboratory.create(
-                name = payload['name'],
-                classroom = payload['classroom'],
-                description = payload['description'],
-                instances = payload['instances'],
-                fk_user = User.select().where(User.id_user=='1234567890')
+                name = laboratory_name,
+                classroom = laboratory_classroom,
+                description = laboratory_description,
+                instances = laboratory_instances,
+                fk_user = User.select().where(User.id_user==user_id)
             )
+
             # print(laboratory_to_bd['id_laboratory'])
             undo['laboratory_to_bd']=True #laboratory_to_bd['id_laboratory']
             print('laboratory_to_bd')
 
             connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-            username = 'renancs'
-            project_name = LABVER_PREFIX+payload['name']
-            description = payload['description']
-            conn = connection_openstack
-
-            project = create_project(username, project_name, description, conn)
+            project = create_project(user_name, project_name, project_description, connection_openstack)
             
             undo['create_project_openstack']=project['id']
             print('create_project_openstack')
@@ -136,15 +150,15 @@ def main():
             project_to_bd = Project.create(
                 id_project =  project['id'],
                 name = project_name,
-                fk_user = User.select().where(User.id_user=='1234567890'),
+                fk_user = User.select().where(User.id_user==user_id),
                 fk_laboratory = laboratory_to_bd.id_laboratory,
-                description = description
+                description = project_description
             )
 
             undo['project_to_bd']=project['id']
             print('project_to_bd')
 
-            network = create_network(LABVER_PREFIX+'rede-data', project['id'], connection_openstack)
+            network = create_network(network_name, project['id'], connection_openstack)
 
             undo['create_network_openstack']=network['id']
             print('create_network_openstack')
@@ -152,30 +166,24 @@ def main():
             cidr = '10.'+ str(randint(0, 254))+'.'+str(randint(0, 254))+'.0/24'
             gateway = cidr.replace('.0/24','.1')
 
-            subnetwork = create_subnet(network['id'], LABVER_PREFIX+'subrede-data', 4, cidr, 
+            subnetwork = create_subnet(network['id'], subnet_name, 4, cidr, 
             gateway, connection_openstack)
 
-            router_gateway_port = create_port(
-                network['id'],
-                LABVER_PREFIX+'porta_roteador',
-                gateway,
-                subnetwork['id'],
-                connection_openstack
-            )
+            router_gateway_port = create_port(network['id'], router_gateway_port_name,
+                gateway, subnetwork['id'], connection_openstack)
 
             undo['create_port_openstack']=router_gateway_port['id']
             print('create_port_openstack')
 
             provider_network = get_network_by_name('provider', connection_openstack)
 
-            router = create_router(LABVER_PREFIX+'roteador', provider_network['id'], project['id'], connection_openstack)
+            router = create_router(router_name, provider_network['id'], project['id'], 
+                                   connection_openstack)
 
             undo['create_router_openstack']=router['id']
             print('create_router_openstack')
 
-            connection_openstack.add_router_interface(router=router,
-                                                    subnet_id=subnetwork['id'],
-                                                    port_id=router_gateway_port['id'])
+            add_port_to_router(router, subnetwork['id'], router_gateway_port['id'], connection_openstack)
 
             project_to_bd.cidr=cidr
             project_to_bd.gateway=gateway
@@ -187,9 +195,9 @@ def main():
             project_to_bd.save()
             
             id_do_lab = laboratory_to_bd.id_laboratory
-            link = "<a href='/delete_laboratory/"+str(id_do_lab)+"'>Apagar o LAB - "+str(id_do_lab)+"</a>"
+            # link = "<a href='/delete_laboratory/"+str(id_do_lab)+"'>Apagar o LAB - "+str(id_do_lab)+"</a>"
 
-            user_from_bd = User.get_by_id('1234567890')
+            user_from_bd = User.get_by_id(user_id)
 
             if user_from_bd.token_OSM == '':
                 token = tokens.create_token()
@@ -207,7 +215,7 @@ def main():
                         user_from_bd.save()
                         token=str(token['id'])
             
-            print('TOKEN VALUE:',token)
+            # print('TOKEN VALUE:',token)
             vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
 
             vimAccountId={}
@@ -220,7 +228,7 @@ def main():
             undo['OSMvim_create_vim']=vimAccountId['id']
             print('OSMvim_create_vim')
 
-            nsd = OSMNS.create_nsd(REQUEST_POST1)
+            nsd = OSMNS.create_nsd(laboratory_name, REQUEST_POST1)
             nsdId = OSMNS.compose_ns(token, nsd)
             nsName = project_name
 
@@ -229,7 +237,7 @@ def main():
 
             nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
 
-            print(nsdId_instance)
+            # print(nsdId_instance)
             undo['OSMNS_instantiate_ns']=nsdId_instance
             print('OSMNS_instantiate_ns')
 
@@ -246,7 +254,10 @@ def main():
 
             # print("================================================================")
             # print(nsdId, nsdId_instance)
-            return link
+            # return link
+            retorno = {'id': id_do_lab}
+
+            return retorno, 201
 
         except Exception as error:
 

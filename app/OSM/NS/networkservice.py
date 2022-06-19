@@ -247,7 +247,7 @@ def create_vnffgd(json):
 
     return vnffgd
 
-def create_nsd(json):
+def create_nsd(nsd_name, json):
     payload = json
 
     d={}
@@ -255,8 +255,8 @@ def create_nsd(json):
 
     nsd={}    
     nsd["id"]="lab_nsdeumtesteamaisdiferente" # usar o ID que vai ser criado no BANCO
-    nsd["name"]=payload["name"] #nsd["name"]="lab_nsd"
-    nsd["short-name"]=payload["name"] #nsd["short-name"]="lab_nsd"
+    nsd["name"]=nsd_name #nsd["name"]="lab_nsd"
+    nsd["short-name"]=nsd_name #nsd["short-name"]="lab_nsd"
     nsd["vendor"]="OSM"
     nsd["description"]=payload["description"] #nsd["description"]="Laboratorio Padrao"
     nsd["version"]="1.0"
