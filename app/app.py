@@ -121,6 +121,29 @@ def main():
 
         return False
 
+    @app.route('/beta/listImages/', methods=['POST', 'GET', 'DELETE'])
+    def beta_listImages():
+        if request.method == 'POST':
+            return 'Post Method not allowed', 400
+
+        if request.method == 'GET':
+            try:
+                cloud = 'openstack-serra'
+                connection_openstack = create_connection_openstack_clouds_file(cloud)
+                images=[]
+                for image in connection_openstack.list_images(show_all=True):
+                    if 'properties' in image:
+                        if 'is_lab_allowed' in image['properties']:
+                            dic = {'id':image['id'], 'name':image['name']}
+                            print(dic)
+                            images.append(dic)
+                return jsonify(images)
+
+            except Exception as error:
+                print("error", error)
+                return 'erro não tratado.', 400
+        
+
     @app.route('/beta/create_laboratory')
     def beta_create_laboratory():
         if request.method == 'GET':
@@ -152,23 +175,36 @@ def main():
                     instances = laboratory_instances,
                     fk_user = User.select().where(User.id_user==user_id)
                 )
-                
+
                 laboratory_to_bd.id_laboratory
                 retorno = {'id': laboratory_to_bd.id_laboratory}
+                return retorno, 200
                 
             except Exception as error:
                 print("error", error)
                 return 'erro não tratado.', 400
 
-        return '/beta/create_laboratory', 200
 
     @app.route("/beta/delete_laboratory/<laboratory_id>/", methods=['POST', 'GET', 'DELETE'])
     def beta_delete_laboratory(laboratory_id):
-        cloud = 'openstack-serra'
+        if request.method == 'POST':
+            return 'Post Method not allowed', 400
 
-        connection_openstack = create_connection_openstack_clouds_file(cloud)
+        if request.method == 'GET':
+            try:
+                laboratory_from_bd = (Laboratory
+                    .select(Laboratory)
+                    .where(Laboratory.id_laboratory==laboratory_id))
+                laboratory = laboratory_from_bd.dicts().get()
+                if laboratory:
+                    laboratory_from_bd.get().delete_instance(recursive=True)                
 
-        return '/beta/delete_laboratory/<laboratory_id>/', 200
+                return '', 200
+                
+            except Exception as error:
+                print("error", error)
+                return 'erro não tratado.', 400
+            
 
     @app.route("/delete_laboratory/<laboratory_id>/", methods=['POST', 'GET', 'DELETE'])
     def delete_laboratory(laboratory_id):
