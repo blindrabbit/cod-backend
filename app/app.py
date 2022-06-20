@@ -120,10 +120,10 @@ def main():
             project_name = laboratory_name
             project_description = laboratory_description
 
-            network_name = LABVER_PREFIX+'rede-data'
-            subnet_name = LABVER_PREFIX+'subrede-data'
-            router_gateway_port_name = LABVER_PREFIX+'porta_roteador'
-            router_name = LABVER_PREFIX+'roteador'
+            network_name = laboratory_name+'rede-data'
+            subnet_name = laboratory_name+'subrede-data'
+            router_gateway_port_name = laboratory_name+'porta_roteador'
+            router_name = laboratory_name+'roteador'
 
             if Laboratory.get_or_none(Laboratory.name==laboratory_name):
                 return "ja tem com esse nome"
