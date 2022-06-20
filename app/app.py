@@ -5,6 +5,7 @@
 # PS C:\Users\1918648\Documents\GitHub\cod-backend> .\env\Scripts\Activate
 # (env) PS C:\Users\1918648\Documents\GitHub\cod-backend> $env:OS_CLIENT_CONFIG_FILE="./app/clouds.yaml"
 import json
+from xmlrpc.client import boolean
 from OSM.project.project_OSM import *
 # import bios
 # from requests.api import head
@@ -58,6 +59,117 @@ def main():
 #     # note that we set the 404 status explicitly
 #     return "", 404
 
+    def create_laboratory_validade_json(json):
+
+        if 'name' not in json:
+            return 'name not defined'
+        
+        if 'user_owner' not in json:
+            return 'user_owner not defined'
+        
+        if 'image' not in json:
+            return 'image not defined'
+
+        if 'classroom' not in json:
+            return 'classroom not defined'
+
+        if 'instances' not in json:
+            return 'instances not defined'
+        else:
+            if not isinstance(json['instances'], int):
+                return 'instances must be integer'
+                
+        if 'description' not in json:
+            return 'description not defined'
+
+        if 'internetaccess' not in json:
+            return 'internetaccess not defined'
+        else:
+            if not isinstance(json['internetaccess'], bool):
+                return 'internetaccess must be bool [true/false]'
+
+        if 'creation_date' not in json:
+            return 'creation_date not defined'
+        else:
+            if not isinstance(datetime.datetime.fromtimestamp(int(json['creation_date'])), 
+                                datetime.datetime):
+                return 'creation_date must be datetime [timestamp]'
+
+        if 'removal_date' not in json:
+            return 'removal_date not defined'
+        else:
+            if not isinstance(datetime.datetime.fromtimestamp(int(json['removal_date'])), 
+                                datetime.datetime):
+                return 'removal_date must be datetime [timestamp]'
+
+        if 'networkfunctions' not in json:
+            return 'networkfunctions not defined'
+        else:
+            for vnf in json['networkfunctions']:
+                print(json['networkfunctions'][vnf])
+                if 'image' not in json['networkfunctions'][vnf]:
+                    return 'image not defined at ' + vnf
+
+                if 'order' not in json['networkfunctions'][vnf]:
+                    return 'order not defined at ' + vnf
+                else:
+                    if not isinstance(json['networkfunctions'][vnf]['order'], int):
+                        return 'order defined at ' + vnf + ' must be integer'
+
+                if 'configs' not in json['networkfunctions'][vnf]:
+                    return 'configs not defined at ' + vnf
+
+        return False
+
+    @app.route('/beta/create_laboratory')
+    def beta_create_laboratory():
+        if request.method == 'GET':
+            return 'Get Method not allowed', 400
+
+        if request.method == 'POST':
+            data = request.get_json()
+            lab_check_up = create_laboratory_validade_json(data)
+            
+            if lab_check_up:
+                return lab_check_up, 400
+
+            try:
+                user_name = 'renancs' # recuperar o nome do FRONTEND
+                user_id = '1234567890' # recuperar o ID do FRONTEND
+
+                laboratory_name = LABVER_PREFIX+data['name']
+                laboratory_classroom = data['classroom']
+                laboratory_description = data['description']
+                laboratory_instances = data['instances']
+
+                if Laboratory.get_or_none(Laboratory.name==laboratory_name):
+                    return "ja tem com esse nome"
+
+                laboratory_to_bd = Laboratory.create(
+                    name = laboratory_name,
+                    classroom = laboratory_classroom,
+                    description = laboratory_description,
+                    instances = laboratory_instances,
+                    fk_user = User.select().where(User.id_user==user_id)
+                )
+                
+                laboratory_to_bd.id_laboratory
+                retorno = {'id': laboratory_to_bd.id_laboratory}
+                
+            except Exception as error:
+                print("error", error)
+                return 'erro não tratado.', 400
+
+        return '/beta/create_laboratory', 200
+
+    @app.route("/beta/delete_laboratory/<laboratory_id>/", methods=['POST', 'GET', 'DELETE'])
+    def beta_delete_laboratory(laboratory_id):
+        cloud = 'openstack-serra'
+
+        connection_openstack = create_connection_openstack_clouds_file(cloud)
+
+        return '/beta/delete_laboratory/<laboratory_id>/', 200
+
     @app.route("/delete_laboratory/<laboratory_id>/", methods=['POST', 'GET', 'DELETE'])
     def delete_laboratory(laboratory_id):
         cloud = 'openstack-serra'
@@ -107,6 +219,11 @@ def main():
         cloud = 'openstack-serra'
         payload = REQUEST_POST1
         undo={}
+        ok = create_laboratory_validade_json(payload)
+        if (ok):
+            True
+        else:
+            False
         try:
 
             user_name = 'renancs' # recuperar o nome do FRONTEND
@@ -303,23 +420,27 @@ def main():
     def testemodel():
         a = 10 + 10
 
-        laboratory_id = 57
 
-        laboratory_from_bd = (Laboratory
-            .select(Laboratory, User, Project, Networkservice)
-            .join(User)
-            .join(Project)
-            .join(Networkservice)
-            .where(Laboratory.id_laboratory==laboratory_id))
+        var = create_laboratory_validade_json(REQUEST_POST1)
+        if var:
+            print(var)
+        # laboratory_id = 57
+        return var
+        # laboratory_from_bd = (Laboratory
+        #     .select(Laboratory, User, Project, Networkservice)
+        #     .join(User)
+        #     .join(Project)
+        #     .join(Networkservice)
+        #     .where(Laboratory.id_laboratory==laboratory_id))
 
-        print('<><><><><><><><><<>><><><><><><><><><><><><><>')
-        laboratory = laboratory_from_bd.dicts().get()
+        # print('<><><><><><><><><<>><><><><><><><><><><><><><>')
+        # laboratory = laboratory_from_bd.dicts().get()
         
-        print(',.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,')
-        laboratory_from_bd.get().delete_instance(recursive=True)
+        # print(',.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,')
+        # laboratory_from_bd.get().delete_instance(recursive=True)
 
 
-        print(laboratory['id_laboratory'])
+        # print(laboratory['id_laboratory'])
         # token = 'hl5mC3C9EEYoBQLSd45l263QypVp3prk'
         # id_osm_ns_instance='76929e1f-5281-4dd1-b691-aa469bc9867c'
         # # id_osm_ns_instance='0d22cc4e-b8d4-4756-9f08-5923e70907b6'715a857f-0284-4c2d-ab6f-aedd26742c8f
@@ -545,15 +666,14 @@ def main():
         cloud = 'openstack-serra'
         connection_openstack = create_connection_openstack_clouds_file(cloud)
         images=[]
-        for image in connection_openstack.list_images():        
-            if 'is_lab_allowed' in image['metadata']:            
-                # ativo = server["metadata"]["ativo"]
-                # este é um teste print(image)
-
-                dic = {'id':image['id'], 'name':image['name']}
-                print(dic)
-                images.append(dic)
+        for image in connection_openstack.list_images(show_all=True):
+            if 'properties' in image:
+                if 'is_lab_allowed' in image['properties']:
+                    dic = {'id':image['id'], 'name':image['name']}
+                    print(dic)
+                    images.append(dic)
         return jsonify(images)
+
 
     @app.route('/osm/criarnetworkservice/', methods=['POST', 'GET', 'DELETE'])
     def osmNS():

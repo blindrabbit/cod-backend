@@ -4,8 +4,6 @@ IP = "172.16.112.56"
 PORT = "9999"
 LABVER_PREFIX = '_LABVER_'
 
-
-
 url_projects = "https://"+OSM_IP+":"+PORT+"/osm/admin/v1/projects"
 url_users = "https://"+OSM_IP+":"+PORT+"/osm/admin/v1/users"
 url_vim = "https://"+OSM_IP+":"+PORT+"/osm/admin/v1/vims"
@@ -36,21 +34,26 @@ REQUEST_POST = {
     },
 }
 
+
 REQUEST_POST1 = {
     "name": "teste xxx1",
+    "user_owner": "teste xxx1",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
     "instances": 1,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
+    "creation_date": '1655695933',
+    "removal_date": '1655795933',
     "networkfunctions": {
         "vnf1": {
             "image": "openwrt_vnfd",
-            "order": 0,
+            "order": 1,
             "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
         },
     },
 }
+
 
 AUTH_URL='https://200.137.75.159:5000/v3'
 VIM_USER='renancs'
