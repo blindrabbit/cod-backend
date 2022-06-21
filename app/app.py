@@ -5,6 +5,7 @@
 # PS C:\Users\1918648\Documents\GitHub\cod-backend> .\env\Scripts\Activate
 # (env) PS C:\Users\1918648\Documents\GitHub\cod-backend> $env:OS_CLIENT_CONFIG_FILE="./app/clouds.yaml"
 import json
+import threading
 from xmlrpc.client import boolean
 from OSM.project.project_OSM import *
 # import bios
@@ -49,6 +50,7 @@ requests.packages.urllib3.disable_warnings()
 
 def main():
     print ("Iniciando Serviço")
+
     app = Flask(__name__)
     CORS(app)
 
@@ -58,6 +60,51 @@ def main():
 # def page_not_found(e):
 #     # note that we set the 404 status explicitly
 #     return "", 404
+    @app.before_first_request
+    def activate_schedule():
+        def run_scheduler():
+            print("Starting Thread to monitor laboratory schedules.")
+            while True:                
+                time.sleep(100)
+                query = (Laboratory
+                        .select())
+                laboratories = {}
+                laboratories['removal'] = []
+                laboratories['create'] = []
+
+                for lab in query:
+                    lab_query = (Laboratory
+                        .select(Laboratory, User, Project, Networkservice, Project.name.alias('proj_name'))
+                        .join(User)
+                        .join(Project)
+                        .join(Networkservice)
+                        .where(Laboratory.id_laboratory==lab.id_laboratory)).dicts().get()
+                    
+                    token = lab_query['token_OSM']
+                    nsName = lab_query['proj_name']
+                    nsdId = lab_query['id_osm_ns_instance']
+                    vimAccountId = lab_query['id_osm_vim']
+
+                    retorno = OSMNS.get_ns_resource(token, nsdId)
+                    if 'nsState' not in retorno:
+                        if lab_query['creation_date'] <= datetime.datetime.now():
+                            ns_instantiated = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
+                            dic = {nsdId: nsName}
+                            laboratories['create'].append(dic)   
+                    if 'nsState' in retorno:
+                        if retorno['nsState'] == 'READY':
+                            if lab_query['removal_date'] < datetime.datetime.now():
+                                # ns_terminaded = OSMNS.delete_ns_instantiate(token, nsdId)
+                                ns_terminaded = delete_laboratory(lab_query['id_laboratory'])
+                                dic = {nsdId: nsName}
+                                laboratories['removal'].append(dic)
+                
+                print(laboratories)
+                time.sleep(200)
+
+        thread = threading.Thread(target=run_scheduler)
+        thread.start()
+
 
     def create_laboratory_validade_json(json):
 
@@ -121,6 +168,7 @@ def main():
 
         return False
 
+
     @app.route('/beta/listImages/', methods=['POST', 'GET', 'DELETE'])
     def beta_listImages():
         if request.method == 'POST':
@@ -142,7 +190,7 @@ def main():
             except Exception as error:
                 print("error", error)
                 return 'erro não tratado.', 400
-        
+
 
     @app.route('/beta/create_laboratory')
     def beta_create_laboratory():
@@ -277,6 +325,9 @@ def main():
             subnet_name = laboratory_name+'subrede-data'
             router_gateway_port_name = laboratory_name+'porta_roteador'
             router_name = laboratory_name+'roteador'
+            
+            creation_date = datetime.datetime.fromtimestamp(int(payload['creation_date']))
+            removal_date = datetime.datetime.fromtimestamp(int(payload['removal_date']))
 
             if Laboratory.get_or_none(Laboratory.name==laboratory_name):
                 return "ja tem com esse nome"
@@ -388,26 +439,23 @@ def main():
             undo['OSMNS_compose_ns']=nsdId
             print('OSMNS_compose_ns')
 
-            nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
+# Recurso do agendamento, se a data de criação for menor que a data atual, 
+# ele instancia no momento da criação. Se não, será inicializado por outro metodo de inicialização.
+            if creation_date <= datetime.datetime.now():
+                nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
 
-            # print(nsdId_instance)
-            undo['OSMNS_instantiate_ns']=nsdId_instance
-            print('OSMNS_instantiate_ns')
+                undo['OSMNS_instantiate_ns']=nsdId_instance
+                print('OSMNS_instantiate_ns')
 
             networkservice_to_bd = Networkservice.create(            
                 id_networkservice = nsdId,
                 id_osm_nsd = nsdId,
                 id_osm_ns_instance = nsdId_instance['id'],
                 id_osm_vim = vimAccountId['id'],
-                fk_project = project['id'] #
-                # # parei aqui, fk_project = project['id'],
-    # NameError: name 'project' is not defined
+                fk_project = project['id'] 
             )
             networkservice_to_bd.save()
 
-            # print("================================================================")
-            # print(nsdId, nsdId_instance)
-            # return link
             retorno = {'id': id_do_lab}
 
             return retorno, 201
@@ -456,11 +504,28 @@ def main():
     def testemodel():
         a = 10 + 10
 
-
         var = create_laboratory_validade_json(REQUEST_POST1)
         if var:
             print(var)
         # laboratory_id = 57
+
+        creation_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['creation_date']))
+        removal_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['removal_date']))
+
+        print('11111111111111111111111111111111111111111')
+        print(creation_date)
+
+        if creation_date <= datetime.datetime.now():
+            print('Data de criação menor que agora!')
+        if removal_date <= datetime.datetime.now():
+            print('Data de remoção menor que agora!')
+        else:
+            print('Data de remoção maior que agora!')
+            print(removal_date)
+
+        return 'DEU BOM'
+
+
         return var
         # laboratory_from_bd = (Laboratory
         #     .select(Laboratory, User, Project, Networkservice)
@@ -632,6 +697,17 @@ def main():
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
 
+        
+        # laboratories = {}
+        # laboratories['removal'] = []
+        # laboratories['create'] = []
+        # dic = {'id': '1234567890'}
+        # laboratories['removal'].append(dic)
+        # laboratories['removal'].append(dic)
+        # laboratories['removal'].append(dic)
+        # laboratories['removal'].append(dic)
+        # print(laboratories)
+        return 'labs'
         #recebe as informações do laboratorio do FRONEND
         # info_lab = request.get_json()
 
@@ -641,10 +717,10 @@ def main():
 
         # VERIFICAR SE JÁ TEM ALGUM TOKEN, SE TIVER USAR O EXISTENTE
         # CONSULTAR NO BANCO DE DADOS NA TABELA LABORATORIO - A CRIAR
-        token = tokens.create_token()
-        print('----- ',token)
-        token = token['id']
-        print('===== ',str(token))
+        # token = tokens.create_token()
+        # print('----- ',token)
+        # token = token['id']
+        # print('===== ',str(token))
         # # Pilha de criação de infraestrutura dentro do OSM
 
         # # SERÁ CRIADA UM VIM PARA CADA LABORATORIO

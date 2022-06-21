@@ -8,10 +8,6 @@ def get_ns_resource(token, nsInstanceId):
 # /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource
 # /nslcm/v1/ns_instances/{nsInstanceId}/terminate
 
-    nsInstanceId='76929e1f-5281-4dd1-b691-aa469bc9867c' #ns instance recuperado do OSM 
-    nsInstanceId='0d22cc4e-b8d4-4756-9f08-5923e70907b6' #ns instance retornado do comando de criação
-    nsInstanceId='7a8ecad4-6d21-4191-bd4f-43d322d89595' #ns descripts ID
-
     if type(token) is dict:
         tokenId=token['id']
     else:
@@ -32,7 +28,7 @@ def get_ns_resource(token, nsInstanceId):
     response = requests.request(
         method="GET", url=url, headers=headers, data=payload, verify=False)
 
-    return response.text
+    return response.json()
 
 def delete_ns_instantiate(token, nsdId_instance):
 # /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource
