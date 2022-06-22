@@ -26,6 +26,7 @@ def delete_vim(token, vimId):
 
     return response.text
 
+
 def get_vim_accounts(token):
     # GET /admin/v1/vims Query information about multiple VIMs
     method_osm = "/admin/v1/vims/"
@@ -42,6 +43,7 @@ def get_vim_accounts(token):
     response = requests.request("GET", url, headers=headers, data=payload,verify=False)
     return response.json()
 
+
 def get_vim_account_by_id(token, id):
     # GET /admin/v1/vims/{vimId} Query information about an individual VIM
     method_osm = "/admin/v1/vims/"+id
@@ -57,6 +59,7 @@ def get_vim_account_by_id(token, id):
 
     response = requests.request("GET", url, headers=headers, data=payload,verify=False)
     return response.json()
+
 
 def get_vim_account_by_name(token, vimName):
     # GET /admin/v1/vims Query information about multiple VIMs
@@ -79,7 +82,7 @@ def get_vim_account_by_name(token, vimName):
     return False
 
 
-def create_vim(token, projName):
+def create_vim(token, projname):
     # token = token.replace('\r','')
 
     method_osm = "/admin/v1/vim_accounts/"
@@ -87,11 +90,11 @@ def create_vim(token, projName):
 
     payload = {
         # "schema_version": "1.11",
-        "name": "VIM - "+projName,
+        "name": "VIM_"+projname,
         "description": "nuvem openstack",
         "vim_type": "openstack",
         "vim_url": AUTH_URL,
-        "vim_tenant_name": projName,
+        "vim_tenant_name": projname,
         "vim_user": VIM_USER,
         "vim_password": VIM_PASS,
         "config": { 

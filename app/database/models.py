@@ -7,7 +7,7 @@ from datetime import datetime
 from database.connection_db import *
 
 db = create_connection_db('odb',
-                          'root', 'root', '127.0.0.1', 3306)
+                          'root2', "root2", '10.50.1.122', 3306)
 
 class BaseModel(Model):
     class Meta:
@@ -50,7 +50,7 @@ class Laboratory(BaseModel):
     creation_date = DateTimeField(default=datetime.now)
     removal_date = DateTimeField(default=datetime.now)
     # fk_network_service = ForeignKeyField(Networkservice, backref='laboratory')
-    fk_user = ForeignKeyField(User, backref='laboratories')
+    fk_user = ForeignKeyField(User, backref='laboratories', null=True)
 
     class Meta:
         table_name = 'laboratory'
@@ -60,8 +60,8 @@ class Project(BaseModel):
     id_project = CharField(max_length=100, primary_key=True)
     name = CharField(max_length=100, unique=True)
     creation_date = DateField(default=datetime.now)
-    fk_user = ForeignKeyField(User, db_column='id_user')
-    fk_laboratory = ForeignKeyField(Laboratory, db_column='id_laboratory')
+    fk_user = ForeignKeyField(User, db_column='id_user', null=True)
+    fk_laboratory = ForeignKeyField(Laboratory, db_column='id_laboratory', null=True)
     description = CharField(max_length=100)
     cidr = CharField(max_length=100)
     gateway = CharField(max_length=100)
@@ -124,9 +124,9 @@ class Networkservice(BaseModel):
     id_osm_nsd = CharField(max_length=100)
     id_osm_vim = CharField(max_length=100)
     creation_date = DateTimeField(default=datetime.now)
-    fk_project = ForeignKeyField(Project, db_column='id_project')
-    fk_vnffgd = ForeignKeyField(Vnffgd, db_column='id_vnffgd')
-    fk_Constituent_vnfd = ForeignKeyField(Constituent_vnfd, db_column='id_constituent_vnfd')
+    fk_project = ForeignKeyField(Project, db_column='id_project', null=True)
+    fk_vnffgd = ForeignKeyField(Vnffgd, db_column='id_vnffgd', null=True)
+    fk_Constituent_vnfd = ForeignKeyField(Constituent_vnfd, db_column='id_constituent_vnfd', null=True)
 
     class Meta:
         table_name = 'networkservice'

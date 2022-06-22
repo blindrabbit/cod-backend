@@ -30,6 +30,7 @@ def get_ns_resource(token, nsInstanceId):
 
     return response.json()
 
+
 def delete_ns_instantiate(token, nsdId_instance):
 # /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource
 # /nslcm/v1/ns_instances/{nsInstanceId}/terminate

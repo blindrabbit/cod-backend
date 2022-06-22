@@ -36,7 +36,7 @@ REQUEST_POST = {
 
 
 REQUEST_POST1 = {
-    "name": "teste xxx1",
+    "name": "testexxx1",
     "user_owner": "teste xxx1",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",

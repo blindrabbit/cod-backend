@@ -48,38 +48,39 @@ from random import randint
 
 requests.packages.urllib3.disable_warnings()
 
+
 def main():
-    print ("Iniciando Serviço")
+    print("Iniciando Serviço")
 
     app = Flask(__name__)
     CORS(app)
 
-# @cross_origin()
+    # @cross_origin()
 
-# @app.errorhandler(404)
-# def page_not_found(e):
-#     # note that we set the 404 status explicitly
-#     return "", 404
+    # @app.errorhandler(404)
+    # def page_not_found(e):
+    #     # note that we set the 404 status explicitly
+    #     return "", 404
     @app.before_first_request
     def activate_schedule():
         def run_scheduler():
             print("Starting Thread to monitor laboratory schedules.")
-            while True:                
+            while True:
                 time.sleep(100)
                 query = (Laboratory
-                        .select())
+                         .select())
                 laboratories = {}
                 laboratories['removal'] = []
                 laboratories['create'] = []
 
                 for lab in query:
                     lab_query = (Laboratory
-                        .select(Laboratory, User, Project, Networkservice, Project.name.alias('proj_name'))
-                        .join(User)
-                        .join(Project)
-                        .join(Networkservice)
-                        .where(Laboratory.id_laboratory==lab.id_laboratory)).dicts().get()
-                    
+                                 .select(Laboratory, User, Project, Networkservice, Project.name.alias('proj_name'))
+                                 .join(User)
+                                 .join(Project)
+                                 .join(Networkservice)
+                                 .where(Laboratory.id_laboratory == lab.id_laboratory)).dicts().get()
+
                     token = lab_query['token_OSM']
                     nsName = lab_query['proj_name']
                     nsdId = lab_query['id_osm_ns_instance']
@@ -90,7 +91,7 @@ def main():
                         if lab_query['creation_date'] <= datetime.datetime.now():
                             ns_instantiated = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
                             dic = {nsdId: nsName}
-                            laboratories['create'].append(dic)   
+                            laboratories['create'].append(dic)
                     if 'nsState' in retorno:
                         if retorno['nsState'] == 'READY':
                             if lab_query['removal_date'] < datetime.datetime.now():
@@ -98,22 +99,21 @@ def main():
                                 ns_terminaded = delete_laboratory(lab_query['id_laboratory'])
                                 dic = {nsdId: nsName}
                                 laboratories['removal'].append(dic)
-                
+
                 print(laboratories)
                 time.sleep(200)
 
         thread = threading.Thread(target=run_scheduler)
         thread.start()
 
-
     def create_laboratory_validade_json(json):
 
         if 'name' not in json:
             return 'name not defined'
-        
+
         if 'user_owner' not in json:
             return 'user_owner not defined'
-        
+
         if 'image' not in json:
             return 'image not defined'
 
@@ -125,7 +125,7 @@ def main():
         else:
             if not isinstance(json['instances'], int):
                 return 'instances must be integer'
-                
+
         if 'description' not in json:
             return 'description not defined'
 
@@ -138,15 +138,15 @@ def main():
         if 'creation_date' not in json:
             return 'creation_date not defined'
         else:
-            if not isinstance(datetime.datetime.fromtimestamp(int(json['creation_date'])), 
-                                datetime.datetime):
+            if not isinstance(datetime.datetime.fromtimestamp(int(json['creation_date'])),
+                              datetime.datetime):
                 return 'creation_date must be datetime [timestamp]'
 
         if 'removal_date' not in json:
             return 'removal_date not defined'
         else:
-            if not isinstance(datetime.datetime.fromtimestamp(int(json['removal_date'])), 
-                                datetime.datetime):
+            if not isinstance(datetime.datetime.fromtimestamp(int(json['removal_date'])),
+                              datetime.datetime):
                 return 'removal_date must be datetime [timestamp]'
 
         if 'networkfunctions' not in json:
@@ -168,7 +168,6 @@ def main():
 
         return False
 
-
     @app.route('/beta/listImages/', methods=['POST', 'GET', 'DELETE'])
     def beta_listImages():
         if request.method == 'POST':
@@ -178,11 +177,11 @@ def main():
             try:
                 cloud = 'openstack-serra'
                 connection_openstack = create_connection_openstack_clouds_file(cloud)
-                images=[]
+                images = []
                 for image in connection_openstack.list_images(show_all=True):
                     if 'properties' in image:
                         if 'is_lab_allowed' in image['properties']:
-                            dic = {'id':image['id'], 'name':image['name']}
+                            dic = {'id': image['id'], 'name': image['name']}
                             print(dic)
                             images.append(dic)
                 return jsonify(images)
@@ -190,7 +189,6 @@ def main():
             except Exception as error:
                 print("error", error)
                 return 'erro não tratado.', 400
-
 
     @app.route('/beta/create_laboratory')
     def beta_create_laboratory():
@@ -200,38 +198,37 @@ def main():
         if request.method == 'POST':
             data = request.get_json()
             lab_check_up = create_laboratory_validade_json(data)
-            
+
             if lab_check_up:
                 return lab_check_up, 400
 
             try:
-                user_name = 'renancs' # recuperar o nome do FRONTEND
-                user_id = '1234567890' # recuperar o ID do FRONTEND
+                user_name = 'renancs'  # recuperar o nome do FRONTEND
+                user_id = '1234567890'  # recuperar o ID do FRONTEND
 
-                laboratory_name = LABVER_PREFIX+data['name']
+                laboratory_name = LABVER_PREFIX + data['name']
                 laboratory_classroom = data['classroom']
                 laboratory_description = data['description']
                 laboratory_instances = data['instances']
 
-                if Laboratory.get_or_none(Laboratory.name==laboratory_name):
+                if Laboratory.get_or_none(Laboratory.name == laboratory_name):
                     return "ja tem com esse nome"
 
                 laboratory_to_bd = Laboratory.create(
-                    name = laboratory_name,
-                    classroom = laboratory_classroom,
-                    description = laboratory_description,
-                    instances = laboratory_instances,
-                    fk_user = User.select().where(User.id_user==user_id)
+                    name=laboratory_name,
+                    classroom=laboratory_classroom,
+                    description=laboratory_description,
+                    instances=laboratory_instances,
+                    fk_user=User.select().where(User.id_user == user_id)
                 )
 
                 laboratory_to_bd.id_laboratory
                 retorno = {'id': laboratory_to_bd.id_laboratory}
                 return retorno, 200
-                
+
             except Exception as error:
                 print("error", error)
                 return 'erro não tratado.', 400
-
 
     @app.route("/beta/delete_laboratory/<laboratory_id>/", methods=['POST', 'GET', 'DELETE'])
     def beta_delete_laboratory(laboratory_id):
@@ -241,18 +238,17 @@ def main():
         if request.method == 'GET':
             try:
                 laboratory_from_bd = (Laboratory
-                    .select(Laboratory)
-                    .where(Laboratory.id_laboratory==laboratory_id))
+                                      .select(Laboratory)
+                                      .where(Laboratory.id_laboratory == laboratory_id))
                 laboratory = laboratory_from_bd.dicts().get()
                 if laboratory:
-                    laboratory_from_bd.get().delete_instance(recursive=True)                
+                    laboratory_from_bd.get().delete_instance(recursive=True)
 
                 return '', 200
-                
+
             except Exception as error:
                 print("error", error)
                 return 'erro não tratado.', 400
-            
 
     @app.route("/delete_laboratory/<laboratory_id>/", methods=['POST', 'GET', 'DELETE'])
     def delete_laboratory(laboratory_id):
@@ -261,22 +257,21 @@ def main():
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
         laboratory_from_bd = (Laboratory
-            .select(Laboratory, User, Project, Networkservice)
-            .join(User)
-            .join(Project)
-            .join(Networkservice)
-            .where(Laboratory.id_laboratory==laboratory_id))
+                              .select(Laboratory, User, Project, Networkservice)
+                              .join(User)
+                              .join(Project)
+                              .join(Networkservice)
+                              .where(Laboratory.id_laboratory == laboratory_id))
 
         laboratory = laboratory_from_bd.dicts().get()
 
         token = laboratory['token_OSM']
         tokenInfo = tokens.get_token_info(token)
         if 'code' in tokenInfo:
-            if tokenInfo['code'] == 'UNAUTHORIZED': # token gravado não existe mais, renovar
+            if tokenInfo['code'] == 'UNAUTHORIZED':  # token gravado não existe mais, renovar
                 token = tokens.create_token()
 
         if laboratory:
-
             return_del_ns_instance = OSMNS.delete_ns_instantiate(token, laboratory['id_osm_ns_instance'])
             print(return_del_ns_instance)
 
@@ -287,13 +282,12 @@ def main():
             print(return_del_vim)
 
             delete_router(laboratory['openstack_id_router'],
-                          laboratory['openstack_id_router_gateway_port'], 
+                          laboratory['openstack_id_router_gateway_port'],
                           connection_openstack)
             delete_network(laboratory['openstack_id_network'], connection_openstack)
             return_del_project = delete_project(laboratory['id_project'], connection_openstack)
 
             laboratory_from_bd.get().delete_instance(recursive=True)
-
 
         return '', 204
         # return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
@@ -302,7 +296,7 @@ def main():
     def create_laboratory():
         cloud = 'openstack-serra'
         payload = REQUEST_POST1
-        undo={}
+        undo = {}
         ok = create_laboratory_validade_json(payload)
         if (ok):
             True
@@ -310,10 +304,10 @@ def main():
             False
         try:
 
-            user_name = 'renancs' # recuperar o nome do FRONTEND
-            user_id = '1234567890' # recuperar o ID do FRONTEND
+            user_name = 'renancs'  # recuperar o nome do FRONTEND
+            user_id = '1234567890'  # recuperar o ID do FRONTEND
 
-            laboratory_name = LABVER_PREFIX+payload['name']
+            laboratory_name = LABVER_PREFIX + payload['name']
             laboratory_classroom = payload['classroom']
             laboratory_description = payload['description']
             laboratory_instances = payload['instances']
@@ -321,93 +315,95 @@ def main():
             project_name = laboratory_name
             project_description = laboratory_description
 
-            network_name = laboratory_name+'rede-data'
-            subnet_name = laboratory_name+'subrede-data'
-            router_gateway_port_name = laboratory_name+'porta_roteador'
-            router_name = laboratory_name+'roteador'
-            
+            network_name = laboratory_name + 'rede-data'
+            subnet_name = laboratory_name + 'subrede-data'
+            router_gateway_port_name = laboratory_name + 'porta_roteador'
+            router_name = laboratory_name + 'roteador'
+
             creation_date = datetime.datetime.fromtimestamp(int(payload['creation_date']))
             removal_date = datetime.datetime.fromtimestamp(int(payload['removal_date']))
 
-            if Laboratory.get_or_none(Laboratory.name==laboratory_name):
+            if Laboratory.get_or_none(Laboratory.name == laboratory_name):
                 return "ja tem com esse nome"
 
             laboratory_to_bd = Laboratory.create(
-                name = laboratory_name,
-                classroom = laboratory_classroom,
-                description = laboratory_description,
-                instances = laboratory_instances,
-                fk_user = User.select().where(User.id_user==user_id)
+                name=laboratory_name,
+                classroom=laboratory_classroom,
+                description=laboratory_description,
+                instances=laboratory_instances,
+                fk_user=User.select().where(User.id_user == user_id)
             )
 
             # print(laboratory_to_bd['id_laboratory'])
-            undo['laboratory_to_bd']=True #laboratory_to_bd['id_laboratory']
+            undo['laboratory_to_bd'] = True  # laboratory_to_bd['id_laboratory']
             print('laboratory_to_bd')
 
             connection_openstack = create_connection_openstack_clouds_file(cloud)
 
             project = create_project(user_name, project_name, project_description, connection_openstack)
-            
-            undo['create_project_openstack']=project['id']
+
+            undo['create_project_openstack'] = project['id']
             print('create_project_openstack')
 
             project_to_bd = Project.create(
-                id_project =  project['id'],
-                name = project_name,
-                fk_user = User.select().where(User.id_user==user_id),
-                fk_laboratory = laboratory_to_bd.id_laboratory,
-                description = project_description
+                id_project=project['id'],
+                name=project_name,
+                fk_user=User.select().where(User.id_user == user_id),
+                fk_laboratory=laboratory_to_bd.id_laboratory,
+                description=project_description
             )
 
-            undo['project_to_bd']=project['id']
+            undo['project_to_bd'] = project['id']
             print('project_to_bd')
 
             network = create_network(network_name, project['id'], connection_openstack)
 
-            undo['create_network_openstack']=network['id']
+            undo['create_network_openstack'] = network['id']
             print('create_network_openstack')
 
-            cidr = '10.'+ str(randint(0, 254))+'.'+str(randint(0, 254))+'.0/24'
-            gateway = cidr.replace('.0/24','.1')
+            cidr = '10.' + str(randint(0, 254)) + '.' + str(randint(0, 254)) + '.0/24'
+            gateway = cidr.replace('.0/24', '.1')
 
-            subnetwork = create_subnet(network['id'], subnet_name, 4, cidr, 
-            gateway, connection_openstack)
+            subnetwork = create_subnet(network['id'], subnet_name, 4, cidr,
+                                       gateway, connection_openstack)
 
             router_gateway_port = create_port(network['id'], router_gateway_port_name,
-                gateway, subnetwork['id'], connection_openstack)
+                                              gateway, subnetwork['id'], connection_openstack)
 
-            undo['create_port_openstack']=router_gateway_port['id']
+            undo['create_port_openstack'] = router_gateway_port['id']
             print('create_port_openstack')
 
             provider_network = get_network_by_name('provider', connection_openstack)
 
-            router = create_router(router_name, provider_network['id'], project['id'], 
+            router = create_router(router_name, provider_network['id'], project['id'],
                                    connection_openstack)
 
-            undo['create_router_openstack']=router['id']
+            undo['create_router_openstack'] = router['id']
             print('create_router_openstack')
 
             add_port_to_router(router, subnetwork['id'], router_gateway_port['id'], connection_openstack)
 
-            project_to_bd.cidr=cidr
-            project_to_bd.gateway=gateway
-            project_to_bd.openstack_id_router=router['id']
-            project_to_bd.openstack_id_router_gateway_port=router_gateway_port['id']
-            project_to_bd.openstack_id_subnet=subnetwork['id']
-            project_to_bd.openstack_id_network=network['id']
+            project_to_bd.cidr = cidr
+            project_to_bd.gateway = gateway
+            project_to_bd.openstack_id_router = router['id']
+            project_to_bd.openstack_id_router_gateway_port = router_gateway_port['id']
+            project_to_bd.openstack_id_subnet = subnetwork['id']
+            project_to_bd.openstack_id_network = network['id']
 
             project_to_bd.save()
-            
+
             id_do_lab = laboratory_to_bd.id_laboratory
             # link = "<a href='/delete_laboratory/"+str(id_do_lab)+"'>Apagar o LAB - "+str(id_do_lab)+"</a>"
 
-            user_from_bd = User.get_by_id(user_id)
+            user_from_bd = User.get_or_none(user_id)
+            if user_from_bd is None:
+                user_from_bd = User.get_by_id(0)
 
             if user_from_bd.token_OSM == '':
                 token = tokens.create_token()
-                user_from_bd.token_OSM=str(token['id'])
+                user_from_bd.token_OSM = str(token['id'])
                 user_from_bd.save()
-                token=str(token['id'])
+                token = str(token['id'])
             else:
                 tokenInfo = tokens.get_token_info(user_from_bd.token_OSM)
                 if "_id" in tokenInfo:
@@ -415,44 +411,44 @@ def main():
                 if "code" in tokenInfo:
                     if tokenInfo['code'] == 'UNAUTHORIZED':
                         token = tokens.create_token()
-                        user_from_bd.token_OSM=str(token['id'])
+                        user_from_bd.token_OSM = str(token['id'])
                         user_from_bd.save()
-                        token=str(token['id'])
-            
+                        token = str(token['id'])
+
             # print('TOKEN VALUE:',token)
             vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
 
-            vimAccountId={}
+            vimAccountId = {}
 
             if not vimAccount:
                 vimAccountId = OSMvim.create_vim(token, project_name)
             else:
                 vimAccountId['id'] = vimAccount['_id']
 
-            undo['OSMvim_create_vim']=vimAccountId['id']
+            undo['OSMvim_create_vim'] = vimAccountId['id']
             print('OSMvim_create_vim')
 
             nsd = OSMNS.create_nsd(laboratory_name, REQUEST_POST1)
             nsdId = OSMNS.compose_ns(token, nsd)
             nsName = project_name
 
-            undo['OSMNS_compose_ns']=nsdId
+            undo['OSMNS_compose_ns'] = nsdId
             print('OSMNS_compose_ns')
 
-# Recurso do agendamento, se a data de criação for menor que a data atual, 
-# ele instancia no momento da criação. Se não, será inicializado por outro metodo de inicialização.
+            # Recurso do agendamento, se a data de criação for menor que a data atual,
+            # ele instancia no momento da criação. Se não, será inicializado por outro metodo de inicialização.
             if creation_date <= datetime.datetime.now():
                 nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
 
-                undo['OSMNS_instantiate_ns']=nsdId_instance
+                undo['OSMNS_instantiate_ns'] = nsdId_instance
                 print('OSMNS_instantiate_ns')
 
-            networkservice_to_bd = Networkservice.create(            
-                id_networkservice = nsdId,
-                id_osm_nsd = nsdId,
-                id_osm_ns_instance = nsdId_instance['id'],
-                id_osm_vim = vimAccountId['id'],
-                fk_project = project['id'] 
+            networkservice_to_bd = Networkservice.create(
+                id_networkservice=nsdId,
+                id_osm_nsd=nsdId,
+                id_osm_ns_instance=nsdId_instance['id'],
+                id_osm_vim=vimAccountId['id'],
+                fk_project=project['id']
             )
             networkservice_to_bd.save()
 
@@ -465,23 +461,23 @@ def main():
             if 'OSMNS_instantiate_ns' in undo:
 
                 print('apagar no OSM network service Instance')
-                OSMNS.delete_instantiate_ns(token, undo['OSMNS_instantiate_ns'])
+                OSMNS.delete_ns_instantiate(token, undo['OSMNS_instantiate_ns'])
 
             # undo['create_vim']=vimAccountId['id']
 
             else:
 
-            # undo['create_vim']=vimAccountId['id']
-            # undo['OSMNS.instantiate_ns']=nsdId_instance
+                # undo['create_vim']=vimAccountId['id']
+                # undo['OSMNS.instantiate_ns']=nsdId_instance
 
                 if 'create_router_openstack' in undo:
                     print('apagar roteador')
                     delete_router(undo['create_router_openstack'], undo['create_port_openstack'], connection_openstack)
-                
+
                 if 'create_network_openstack' in undo:
                     print('apagar network')
                     delete_network(undo['create_network_openstack'], connection_openstack)
-                
+
                 if 'OSMNS_compose_ns' in undo:
                     print('apagar no OSM network service Descriptor')
                     OSMNS.delete_nsd(token, undo['OSMNS_compose_ns'])
@@ -493,7 +489,7 @@ def main():
             if 'ERROcreate_project_openstack' in undo:
                 print('apagar projeto')
                 delete_project(undo['create_project_openstack'], connection_openstack)
-            
+
             if 'laboratory_to_bd' in undo:
                 print('apagar laboratorio no banco de dados')
                 laboratory_to_bd.delete_instance(recursive=True)
@@ -525,7 +521,6 @@ def main():
 
         return 'DEU BOM'
 
-
         return var
         # laboratory_from_bd = (Laboratory
         #     .select(Laboratory, User, Project, Networkservice)
@@ -536,10 +531,9 @@ def main():
 
         # print('<><><><><><><><><<>><><><><><><><><><><><><><>')
         # laboratory = laboratory_from_bd.dicts().get()
-        
+
         # print(',.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,')
         # laboratory_from_bd.get().delete_instance(recursive=True)
-
 
         # print(laboratory['id_laboratory'])
         # token = 'hl5mC3C9EEYoBQLSd45l263QypVp3prk'
@@ -552,7 +546,7 @@ def main():
         # print(return_ns_resource)
 
         # # return_del_instance = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
-            
+
         # print('---------------------------------------------')
         # # print(return_del_instance)
         # # laboratory_id = 47
@@ -574,7 +568,6 @@ def main():
         #     # .dicts()
         #     .get())
 
-
         # print('query--------------------------------------------------')
         # print(type(query))
         # print('query--------------------------------------------------')
@@ -583,14 +576,13 @@ def main():
         # print(query.id_laboratory)
         # print('query-id_osm_vim-------------------------------------------------')
         # print(query.id_osm_vim)
-            
-        
+
         # for lab in query:
         #     print(type(lab))
         #     print(lab)
-            
+
         #     # laboratory = lab
-        
+
         # print(str(laboratory.id_laboratory))
         # returno = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
         # print(returno)
@@ -602,11 +594,9 @@ def main():
         #     .join(Networkservice)
         #     .where(Laboratory.id_laboratory==labId))
 
-
         # for lab in query:
         #     print('blabla')
         #     print(lab.token_OSM)
-
 
         # user_from_bd = User.get_by_id('1234567890')
         # if user_from_bd.token_OSM == '':
@@ -623,7 +613,6 @@ def main():
         #             user_from_bd.token_OSM=str(token['id'])
         #             user_from_bd.save()
 
-        
         # project_name = LABVER_PREFIX+'labteste01'
 
         # vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
@@ -646,7 +635,7 @@ def main():
         #             user_from_bd.save()
 
         # vimName = 'vim1'
-        
+
         # project_name = LABVER_PREFIX+'labteste01'
 
         # print('>>>>>>>>>>>>>>>>>>>>>',token)
@@ -657,7 +646,6 @@ def main():
         # else:
         #     vimAccountId = vimAccount['_id']
 
- 
         # laboratory_to_bd = Laboratory(
         #     name = REQUEST_POST['nome'],
         #     classroom = REQUEST_POST['turma'],
@@ -668,18 +656,18 @@ def main():
 
         # laboratory_to_bd.save()
         # laboratory_to_bd.networkservice()
-        
-    # id_laboratory = BigIntegerField(primary_key=True, unique=True,
-    #         constraints=[SQL('AUTO_INCREMENT')])
-    # name = CharField(max_length=100)
-    # classroom = CharField(max_length=100)
-    # description = CharField(max_length=100)
-    # instances = IntegerField()
-    # dt_start = DateTimeField(default=datetime.now)
-    # creation_date = DateTimeField(default=datetime.now)
-    # fk_project = CharField(max_length=100)
-    # # fk_network_service = ForeignKeyField(networkservice, backref='laboratory')
-    # fk_user = ForeignKeyField(User, backref='laboratories')
+
+        # id_laboratory = BigIntegerField(primary_key=True, unique=True,
+        #         constraints=[SQL('AUTO_INCREMENT')])
+        # name = CharField(max_length=100)
+        # classroom = CharField(max_length=100)
+        # description = CharField(max_length=100)
+        # instances = IntegerField()
+        # dt_start = DateTimeField(default=datetime.now)
+        # creation_date = DateTimeField(default=datetime.now)
+        # fk_project = CharField(max_length=100)
+        # # fk_network_service = ForeignKeyField(networkservice, backref='laboratory')
+        # fk_user = ForeignKeyField(User, backref='laboratories')
         # server_from_bd = Server.get_or_none(id_server_openstack=data['server_id'])
         # if server_from_bd is None:
         #     id = Server.insert(
@@ -691,13 +679,11 @@ def main():
         #         cookie='COKKIECOOKIE'
         #     ).on_conflict('replace').execute()
 
-
-        return 'Vamos testar o modelo! -->'#+str(vimAccountId)
+        return 'Vamos testar o modelo! -->'  # +str(vimAccountId)
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
 
-        
         # laboratories = {}
         # laboratories['removal'] = []
         # laboratories['create'] = []
@@ -708,10 +694,10 @@ def main():
         # laboratories['removal'].append(dic)
         # print(laboratories)
         return 'labs'
-        #recebe as informações do laboratorio do FRONEND
+        # recebe as informações do laboratorio do FRONEND
         # info_lab = request.get_json()
 
-        #criação e persistencia do laboratorio no banco de dados
+        # criação e persistencia do laboratorio no banco de dados
 
         # Pilha de criação de infraestrutura dentro do Openstack
 
@@ -757,12 +743,11 @@ def main():
         connection_openstack = create_connection_openstack_clouds_file(cloud)
         if request.method == 'GET':
             data = request.get_json()
-            
+
             # nsd = OSMNS.create_nsd(payload)
 
             print("GET")
         if request.method == 'POST':
-            
             print("POST")
 
         print("blabla")
@@ -777,15 +762,14 @@ def main():
     def listImages():
         cloud = 'openstack-serra'
         connection_openstack = create_connection_openstack_clouds_file(cloud)
-        images=[]
+        images = []
         for image in connection_openstack.list_images(show_all=True):
             if 'properties' in image:
                 if 'is_lab_allowed' in image['properties']:
-                    dic = {'id':image['id'], 'name':image['name']}
+                    dic = {'id': image['id'], 'name': image['name']}
                     print(dic)
                     images.append(dic)
         return jsonify(images)
-
 
     @app.route('/osm/criarnetworkservice/', methods=['POST', 'GET', 'DELETE'])
     def osmNS():
@@ -808,11 +792,10 @@ def main():
             user_domain = 'default'
             project_domain = 'default'
             connection_openstack = create_connection_openstack(auth_url, region, project_name, username, password,
-                                                            user_domain, project_domain)
+                                                               user_domain, project_domain)
             lista_projetos = []
             filter = "[?contains(to_string(description),`teste`)]"
             for projeto in connection_openstack.list_projects(filters=filter):
-
                 nome = projeto['name']
                 id = projeto['id']
                 descricao = projeto["description"]
@@ -833,7 +816,7 @@ def main():
             user_domain = 'default'
             project_domain = 'default'
             connection_openstack = create_connection_openstack(auth_url, region, project_name, username, password,
-                                                            user_domain, project_domain)
+                                                               user_domain, project_domain)
             lista_console = []
 
             conn = connection_openstack
@@ -843,7 +826,7 @@ def main():
                 if "ativo" in server["metadata"]:
                     ativo = server["metadata"]["ativo"]
                 elif ativo is None:
-                    server_from_bd=Server.get_or_none(Server.id_server_openstack==server['id'], Server.state!="")
+                    server_from_bd = Server.get_or_none(Server.id_server_openstack == server['id'], Server.state != "")
                     if server_from_bd is None:
                         nome = server['name']
                         id = server['id']
@@ -851,7 +834,7 @@ def main():
                         tipo = console_url["type"]
                         url = console_url["url"]
                         url_console = {"id": id, "projeto_id": project_id,
-                                    "nome": nome, "url": url, "tipo": tipo, "ativo": ativo}
+                                       "nome": nome, "url": url, "tipo": tipo, "ativo": ativo}
                         lista_console.append(url_console)
             return jsonify(lista_console)
 
@@ -875,7 +858,7 @@ def main():
             user_domain = 'default'
             project_domain = 'default'
             connection_openstack = create_connection_openstack(auth_url, region, project_name, username, password,
-                                                            user_domain, project_domain)
+                                                               user_domain, project_domain)
             print(connection_openstack)
 
             try:
@@ -910,8 +893,8 @@ def main():
             return "authentication invalid"
         else:
             connection_openstack = create_connection_openstack("http://10.50.1.61/identity",
-                                                            'RegionOne', 'admin', 'admin', 'stack',
-                                                            'default', 'default')
+                                                               'RegionOne', 'admin', 'admin', 'stack',
+                                                               'default', 'default')
             if request.method == "POST":
                 start = time.time()
 
@@ -923,14 +906,13 @@ def main():
 
                 id_openstack = user.id
                 save_user_db(name, username, password,
-                            id_openstack)
+                             id_openstack)
 
                 end = time.time()
                 elapsed = end - start
                 print("tempo da requisição: ", elapsed)
 
                 return user
-
 
     @app.route("/server/", methods=['POST', 'GET', 'DELETE', 'UPDATE'])
     def server():
@@ -942,7 +924,7 @@ def main():
         user_domain = 'default'
         project_domain = 'default'
         connection_openstack = create_connection_openstack(auth_url, region, project_name, username, password,
-                                                        user_domain, project_domain)
+                                                           user_domain, project_domain)
         if request.method == "POST":
             data = request.get_json()
 
@@ -1002,8 +984,8 @@ def main():
             admin = True
 
             connection_openstack = create_connection_openstack("http://10.50.1.61/identity",
-                                                            'RegionOne', 'admin', 'admin',
-                                                            'stack', 'default', 'default')
+                                                               'RegionOne', 'admin', 'admin',
+                                                               'stack', 'default', 'default')
 
             if service == -1:
                 return "authentication invalid"
@@ -1059,7 +1041,7 @@ def main():
             project_name = info_user['project_name']
 
             connection_openstack = create_connection_openstack("http://10.50.1.61/identity", 'RegionOne', 'admin',
-                                                            'admin', 'stack', 'default', 'default')
+                                                               'admin', 'stack', 'default', 'default')
 
             connection_openstack.delete_project(project_name)
 
@@ -1092,12 +1074,12 @@ def main():
 
             id_OSM_Delete = delete_project_db(project_name)
             resp = requests.request(
-                method="DELETE", url='https://10.50.1.142:9999/osm/admin/v1/projects/' + str(id_OSM_Delete), headers=headers, verify=False)
+                method="DELETE", url='https://10.50.1.142:9999/osm/admin/v1/projects/' + str(id_OSM_Delete),
+                headers=headers, verify=False)
 
             return resp.text
 
-
-    @ app.route('/VNF/', methods=['POST', 'GET', 'DELETE'])
+    @app.route('/VNF/', methods=['POST', 'GET', 'DELETE'])
     def VNF():
 
         if request.method == 'POST':
@@ -1161,10 +1143,9 @@ def main():
 
                 return response.text
 
-            return(response.text)
+            return (response.text)
 
-
-    @ app.route('/vim/', methods=['POST', 'GET', 'DELETE'])
+    @app.route('/vim/', methods=['POST', 'GET', 'DELETE'])
     def vim():
         info_user = request.get_json()
 
@@ -1213,9 +1194,9 @@ def main():
 
                 return response.text
 
-            return(response.text)
+            return (response.text)
 
-    @ app.route("/security_group/", methods=['POST', 'GET', 'DELETE'])
+    @app.route("/security_group/", methods=['POST', 'GET', 'DELETE'])
     def security_groups():
         info_user = request.get_json()
         username = info_user['username']
@@ -1225,9 +1206,9 @@ def main():
         project_id = info_user['project_id']
         description = info_user['description']
         connection_openstack = create_connection_openstack("http://10.50.1.61/identity",
-                                                        'RegionOne', project_name,
-                                                        username, password, 'default',
-                                                        'default')
+                                                           'RegionOne', project_name,
+                                                           username, password, 'default',
+                                                           'default')
         if request.method == 'POST':
             start = time.time()
 
@@ -1254,8 +1235,7 @@ def main():
 
             return confirm
 
-
-    @ app.route("/rules/", methods=['POST', 'GET', 'DELETE'])
+    @app.route("/rules/", methods=['POST', 'GET', 'DELETE'])
     def rules():
         info_user = request.get_json()
         username = info_user['username']
@@ -1270,9 +1250,9 @@ def main():
         project_name = info_user['laboratory_name']
 
         connection_openstack = create_connection_openstack("http://10.50.1.61/identity",
-                                                        'RegionOne', project_name,
-                                                        username, password, 'default',
-                                                        'default')
+                                                           'RegionOne', project_name,
+                                                           username, password, 'default',
+                                                           'default')
 
         if request.method == 'POST':
             start = time.time()
@@ -1288,8 +1268,7 @@ def main():
 
         pass
 
-
-    @ app.route("/network/", methods=['POST', 'GET', 'DELETE'])
+    @app.route("/network/", methods=['POST', 'GET', 'DELETE'])
     def network():
         info_user = request.get_json()
         username = info_user['username']
@@ -1297,9 +1276,9 @@ def main():
         project_name = info_user['project_name']
         name_network = info_user["name_network"]
         connection_openstack = create_connection_openstack("http://10.50.1.61/identity",
-                                                        'RegionOne', project_name,
-                                                        username, password, 'default',
-                                                        'default')
+                                                           'RegionOne', project_name,
+                                                           username, password, 'default',
+                                                           'default')
 
         if request.method == 'POST':
             network = create_network(name_network, connection_openstack)
@@ -1309,17 +1288,16 @@ def main():
         else:
             pass
 
-
-    @ app.route("/subnet/", methods=['POST', 'GET', 'DELETE'])
+    @app.route("/subnet/", methods=['POST', 'GET', 'DELETE'])
     def subnet():
         info_user = request.get_json()
         username = info_user['username']
         password = info_user['password']
         project_name = info_user['project_name']
         connection_openstack = create_connection_openstack("http://10.50.1.61/identity",
-                                                        'RegionOne', project_name,
-                                                        username, password, 'default',
-                                                        'default')
+                                                           'RegionOne', project_name,
+                                                           username, password, 'default',
+                                                           'default')
 
         subnet_name = info_user['name_subnet']
         network_id = info_user['network_id']
@@ -1329,18 +1307,17 @@ def main():
 
         if request.method == 'POST':
             subnet = create_subnet(network_id, subnet_name, ip_version, cidr,
-                                gateway_ip, connection_openstack)
+                                   gateway_ip, connection_openstack)
             return subnet
 
         else:
             pass
 
-    @ app.route("/image/", methods=['POST', 'GET', 'DELETE'])
+    @app.route("/image/", methods=['POST', 'GET', 'DELETE'])
     def image():
         pass
 
-
-    @ app.route("/flavors/", methods=['POST', 'GET', 'DELETE'])
+    @app.route("/flavors/", methods=['POST', 'GET', 'DELETE'])
     def flavors():
         info_user = request.get_json()
         name = info_user['name']
@@ -1352,137 +1329,157 @@ def main():
         project_id = info_user['laboratory_id']
 
         connection_openstack = create_connection_openstack("http://10.50.1.61/identity",
-                                                        'RegionOne', 'admin',
-                                                        'admin', 'stack', 'default', 'default')
+                                                           'RegionOne', 'admin',
+                                                           'admin', 'stack', 'default', 'default')
 
         if request.method == 'POST':
-
             flavor = create_flavor(name, ram, vcpus, disk, ephemeral, is_public,
-                                project_id, connection_openstack)
+                                   project_id, connection_openstack)
 
             return flavor
 
-
-    @ app.route("/NS/", methods=['POST', 'GET', 'DELETE'])
+    @app.route("/NS/", methods=['POST', 'GET', 'DELETE'])
     def instantiate():
 
         # if request.method == 'POST':
-            start = time.time()
-            headers = {
-                'Content-Type': 'application/json'
+        start = time.time()
+        headers = {
+            'Content-Type': 'application/json'
+        }
+
+        payload = {
+            "username": 'admin',
+            "password": 'admin',
+            "project_id": 'admin'
+        }
+
+        # response = requests.request(method="POST", url='https://10.50.1.56:9999/osm/admin/v1/tokens', headers=headers,
+        # json=payload, verify=False)
+
+        # teste = response.text
+        teste = tokens.create_token
+        token = teste().split()[2].strip()
+
+        payload = {
+            "nsd:nsd-catalog": {
+                "nsd": [
+                    {
+                        "short-name": "lab_nsd_teste1",
+                        "vendor": "OSM",
+                        "description": "lab padrao",
+                        "vld": [{'id': 'dataNet', 'ip-profile-ref': 'IP-t1', 'name': 'dataNet', 'short-name': 'dataNet',
+                                 'type': 'ELAN', 'vnfd-connection-point-ref': [
+                                {'member-vnf-index-ref': 1, 'ip-address': '10.10.10.11',
+                                 'vnfd-connection-point-ref': 'vnf-data',
+                                 'vnfd-id-ref': 'desktop_padrao_vnfd'},
+                                {'member-vnf-index-ref': 101, 'vnfd-connection-point-ref': 'vnf-data',
+                                 'vnfd-id-ref': 'openwrt_vnfd'}]}],
+
+                        'ip-profiles': [{'description': 'Rede de acesso dos desktops', 'ip-profile-params': {
+                            'dhcp-params': {'count': 100, 'enabled': True, 'start-address': '10.10.10.10'},
+                            'dns-server': [{'address': '8.8.8.8'}], 'ip-version': 'ipv4',
+                            'gateway-address': '10.10.10.1', 'subnet-address': '10.10.10.0/24'}, 'name': 'IP-t1'}],
+                        'vnffgd': [{'id': 'vnffg1', 'name': 'vnffg1-name', 'short-name': 'vnffg1-sname',
+                                    'description': 'vnffg1-description', 'vendor': 'vnffg1-vendor', 'version': '1.0',
+                                    'classifier': [{'id': 'class1', 'member-vnf-index-ref': 1, 'name': 'class1name',
+                                                    'rsp-id-ref': 'rsp101', 'vnfd-connection-point-ref': 'vnf-data',
+                                                    'vnfd-id-ref': 'desktop_padrao_vnfd', 'match-attributes': [
+                                            {'id': 'match1', 'ip-proto': 17, 'source-ip-address': '10.10.10.11',
+                                             'destination-port': '5001:5011'}]}],
+                                    'rsp': [{'id': 'rsp101', 'name': 'rsp101name', 'vnfd-connection-point-ref': [
+                                        {'member-vnf-index-ref': 101, 'order': 0,
+                                         'vnfd-egress-connection-point-ref': 'vnf-data', 'vnfd-id-ref': 'openwrt_vnfd',
+                                         'vnfd-ingress-connection-point-ref': 'vnf-data'}]}]}],
+                        "constituent-vnfd": [{'member-vnf-index': 1, 'vnfd-id-ref': 'desktop_padrao_vnfd'},
+                                             {'member-vnf-index': 101, 'vnfd-id-ref': 'openwrt_vnfd'}],
+                        "version": "1.0",
+                        "id": "lab_nsd_teste1",
+                        "name": "lab_nsd_teste1"
+                    }
+                ]
             }
+        }
 
-            payload = {
-                "username": 'admin',
-                "password": 'admin',
-                "project_id": 'admin'
-            }
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            "Authorization": 'Bearer ' + token
+        }
 
-            # response = requests.request(method="POST", url='https://10.50.1.56:9999/osm/admin/v1/tokens', headers=headers,
-                                        # json=payload, verify=False)
+        response = requests.request(
+            method="POST", url='https://10.50.1.56:9999/osm/nsd/v1/ns_descriptors_content', headers=headers,
+            json=payload, verify=False)
 
-            # teste = response.text
-            teste = tokens.create_token
-            token = teste().split()[2].strip()
-
-            payload = {
-                "nsd:nsd-catalog": {
-                    "nsd": [
-                        {
-                            "short-name": "lab_nsd_teste1",
-                            "vendor": "OSM",
-                            "description": "lab padrao",
-                            "vld": [{'id': 'dataNet', 'ip-profile-ref': 'IP-t1', 'name': 'dataNet', 'short-name': 'dataNet', 'type': 'ELAN', 'vnfd-connection-point-ref': [{'member-vnf-index-ref': 1, 'ip-address': '10.10.10.11', 'vnfd-connection-point-ref': 'vnf-data',
-                                                                                                                                                                            'vnfd-id-ref': 'desktop_padrao_vnfd'},
-                                                                                                                                                                        {'member-vnf-index-ref': 101, 'vnfd-connection-point-ref': 'vnf-data', 'vnfd-id-ref': 'openwrt_vnfd'}]}],
-
-                            'ip-profiles': [{'description': 'Rede de acesso dos desktops', 'ip-profile-params': {'dhcp-params': {'count': 100, 'enabled': True, 'start-address': '10.10.10.10'}, 'dns-server': [{'address': '8.8.8.8'}], 'ip-version': 'ipv4', 'gateway-address': '10.10.10.1', 'subnet-address': '10.10.10.0/24'}, 'name': 'IP-t1'}],
-                            'vnffgd': [{'id': 'vnffg1', 'name': 'vnffg1-name', 'short-name': 'vnffg1-sname', 'description': 'vnffg1-description', 'vendor': 'vnffg1-vendor', 'version': '1.0', 'classifier': [{'id': 'class1', 'member-vnf-index-ref': 1, 'name': 'class1name', 'rsp-id-ref': 'rsp101', 'vnfd-connection-point-ref': 'vnf-data', 'vnfd-id-ref': 'desktop_padrao_vnfd', 'match-attributes': [{'id': 'match1', 'ip-proto': 17, 'source-ip-address': '10.10.10.11', 'destination-port': '5001:5011'}]}],
-                                        'rsp': [{'id': 'rsp101', 'name': 'rsp101name', 'vnfd-connection-point-ref': [{'member-vnf-index-ref': 101, 'order': 0, 'vnfd-egress-connection-point-ref': 'vnf-data', 'vnfd-id-ref': 'openwrt_vnfd', 'vnfd-ingress-connection-point-ref': 'vnf-data'}]}]}],
-                            "constituent-vnfd": [{'member-vnf-index': 1, 'vnfd-id-ref': 'desktop_padrao_vnfd'}, {'member-vnf-index': 101, 'vnfd-id-ref': 'openwrt_vnfd'}],
-                            "version": "1.0",
-                            "id": "lab_nsd_teste1",
-                            "name": "lab_nsd_teste1"
-                        }
-                    ]
-                }
-            }
-
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                "Authorization": 'Bearer ' + token
-            }
-
-            response = requests.request(
-                method="POST", url='https://10.50.1.56:9999/osm/nsd/v1/ns_descriptors_content', headers=headers, json=payload, verify=False)
-
-            id_json = response.json()
-            if 'id' in id_json.keys():
-                id = id_json['id']
-            else:            
-                return id_json['code']
-
-            payload = {
-                "nsdId": id,
-                "nsName": "lab_nsd_teste",
-                "nsDescription": "lab padrao",
-                "vimAccountId": "a466b6d6-70b7-4ee8-86e8-3d42da1bb7fb"
-            }
-
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                "Authorization": 'Bearer ' + token
-            }
-
-            response = requests.request(
-                method="POST", url='https://10.50.1.56:9999/osm/nslcm/v1/ns_instances', headers=headers, json=payload, verify=False)
-
-            id_json = response.json()
+        id_json = response.json()
+        if 'id' in id_json.keys():
             id = id_json['id']
+        else:
+            return id_json['code']
 
-            payload = {
-                "nsName": "lab_nsd_teste",
-                "nsdId": id,
-                "vimAccountId": "a466b6d6-70b7-4ee8-86e8-3d42da1bb7fb"
-            }
+        payload = {
+            "nsdId": id,
+            "nsName": "lab_nsd_teste",
+            "nsDescription": "lab padrao",
+            "vimAccountId": "a466b6d6-70b7-4ee8-86e8-3d42da1bb7fb"
+        }
 
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                "Authorization": 'Bearer ' + token
-            }
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            "Authorization": 'Bearer ' + token
+        }
 
+        response = requests.request(
+            method="POST", url='https://10.50.1.56:9999/osm/nslcm/v1/ns_instances', headers=headers, json=payload,
+            verify=False)
+
+        id_json = response.json()
+        id = id_json['id']
+
+        payload = {
+            "nsName": "lab_nsd_teste",
+            "nsdId": id,
+            "vimAccountId": "a466b6d6-70b7-4ee8-86e8-3d42da1bb7fb"
+        }
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            "Authorization": 'Bearer ' + token
+        }
+
+        response = requests.request(
+            method="POST", url='https://10.50.1.56:9999/osm/nslcm/v1/ns_instances/' + id + '/instantiate',
+            headers=headers, json=payload, verify=False)
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            "Authorization": 'Bearer ' + token
+        }
+
+        finished = False
+        while finished == False:
             response = requests.request(
-                method="POST", url='https://10.50.1.56:9999/osm/nslcm/v1/ns_instances/'+id+'/instantiate', headers=headers, json=payload, verify=False)
+                method="GET", url='https://10.50.1.56:9999/osm/nslcm/v1/ns_instances/' + id, headers=headers,
+                verify=False)
+            status = response.json()
+            # print("------------->", status['nsState'])
+            if status['nsState'] == 'READY':
+                finished = True
 
-            headers = {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                "Authorization": 'Bearer ' + token
-            }
+        end = time.time()
+        elapsed = end - start
+        print("tempo da requisição: ", elapsed)
 
-            finished = False
-            while finished == False:
-                response = requests.request(
-                    method="GET", url='https://10.50.1.56:9999/osm/nslcm/v1/ns_instances/'+id, headers=headers, verify=False)
-                status = response.json()
-                # print("------------->", status['nsState'])
-                if status['nsState'] == 'READY':
-                    finished = True
-
-            end = time.time()
-            elapsed = end - start
-            print("tempo da requisição: ", elapsed)
-
-            return "ok"
+        return "ok"
 
     # if __name__ == '__main__':
     #     app.run(debug=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
     # app.debug = True
     # app.config["DEBUG"] = True
+
 
 if __name__ == "__main__":
     main()
