@@ -3,6 +3,7 @@ OPENSTACK_IP = "10.50.0.159"
 IP = "172.16.112.56"
 PORT = "9999"
 LABVER_PREFIX = '_LABVER_'
+DEFAULT_USER = 1 # ajustar de acordo com cadastro no banco
 
 url_projects = "https://"+OSM_IP+":"+PORT+"/osm/admin/v1/projects"
 url_users = "https://"+OSM_IP+":"+PORT+"/osm/admin/v1/users"
@@ -18,33 +19,33 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 
 
 
-REQUEST_POST = {
-    "nome": "nomecanonicodolaboratorio",
-    "imagem": "desktop_padrao_vnfd",
-    "turma": "codigodauturma",
-    "instancias": 1,
-    "descricao": "descricao informativa do laboratorio",
-    "acessoainternet": True,
-    "funcoesderede": {
-        "vnf1": {
-            "imagem": "openwrt_vnfd",
-            "ordem": 0,
-            "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-        },
-    },
-}
+# REQUEST_POST = {
+#     "nome": "nomecanonicodolaboratorio",
+#     "imagem": "desktop_padrao_vnfd",
+#     "turma": "codigodauturma",
+#     "instancias": 1,
+#     "descricao": "descricao informativa do laboratorio",
+#     "acessoainternet": True,
+#     "funcoesderede": {
+#         "vnf1": {
+#             "imagem": "openwrt_vnfd",
+#             "ordem": 0,
+#             "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+#         },
+#     },
+# }
 
 
 REQUEST_POST1 = {
-    "name": "testexxx1",
-    "user_owner": "teste xxx1",
+    "name": "Teste8",
+    "user_owner": "Teste8",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
     "instances": 1,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
     "creation_date": '1655773901',
-    "removal_date": '1658773901',
+    "removal_date": '1656034212',
     "networkfunctions": {
         "vnf1": {
             "image": "openwrt_vnfd",
@@ -55,8 +56,8 @@ REQUEST_POST1 = {
 }
 
 
-AUTH_URL='https://200.137.75.159:5000/v3'
-VIM_USER='renancs'
-VIM_PASS='renan123'
-VIM_PROJETO='PRJ_RENANCS'
-OS_CLIENT_CONFIG_FILE="./clouds.yaml"
+# AUTH_URL='https://200.137.75.159:5000/v3'
+# VIM_USER='labver'
+# VIM_PASS='BZMM!@7fCmkVktpmG0'
+# VIM_PROJETO='PRJ_LABVER'
+# OS_CLIENT_CONFIG_FILE="./app/clouds.yaml"

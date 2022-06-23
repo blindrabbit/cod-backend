@@ -1,7 +1,8 @@
 import requests
+from vars import *
 from urls import *
 # from benedict import benedict
-from env import *
+# from env import *
 
 def delete_vim(token, vimId):
 # /admin/v1/vims/{vimId} Delete a VIM
@@ -76,7 +77,7 @@ def get_vim_account_by_name(token, vimName):
 
     vims = requests.request("GET", url, headers=headers, data=payload,verify=False)
     for vim in vims.json():
-        if vim['name']=="VIM - "+vimName:
+        if vim['name']=="VIM_"+vimName:
             return vim
 
     return False

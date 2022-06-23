@@ -251,10 +251,10 @@ def create_nsd(nsd_name, json):
     d['nsd:nsd-catalog']={}
 
     nsd={}    
-    nsd["id"]="lab_nsdeumtesteamaisdiferente" # usar o ID que vai ser criado no BANCO
+    nsd["id"]="ID_"+nsd_name # usar o ID que vai ser criado no BANCO
     nsd["name"]=nsd_name #nsd["name"]="lab_nsd"
     nsd["short-name"]=nsd_name #nsd["short-name"]="lab_nsd"
-    nsd["vendor"]="OSM"
+    nsd["vendor"]="LABVER"
     nsd["description"]=payload["description"] #nsd["description"]="Laboratorio Padrao"
     nsd["version"]="1.0"
 

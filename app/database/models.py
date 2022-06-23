@@ -50,7 +50,7 @@ class Laboratory(BaseModel):
     creation_date = DateTimeField(default=datetime.now)
     removal_date = DateTimeField(default=datetime.now)
     # fk_network_service = ForeignKeyField(Networkservice, backref='laboratory')
-    fk_user = ForeignKeyField(User, backref='laboratories', null=True)
+    fk_user = ForeignKeyField(User, backref='laboratories')
 
     class Meta:
         table_name = 'laboratory'
@@ -61,7 +61,7 @@ class Project(BaseModel):
     name = CharField(max_length=100, unique=True)
     creation_date = DateField(default=datetime.now)
     fk_user = ForeignKeyField(User, db_column='id_user', null=True)
-    fk_laboratory = ForeignKeyField(Laboratory, db_column='id_laboratory', null=True)
+    fk_laboratory = ForeignKeyField(Laboratory, db_column='id_laboratory')
     description = CharField(max_length=100)
     cidr = CharField(max_length=100)
     gateway = CharField(max_length=100)
@@ -124,7 +124,7 @@ class Networkservice(BaseModel):
     id_osm_nsd = CharField(max_length=100)
     id_osm_vim = CharField(max_length=100)
     creation_date = DateTimeField(default=datetime.now)
-    fk_project = ForeignKeyField(Project, db_column='id_project', null=True)
+    fk_project = ForeignKeyField(Project, db_column='id_project')
     fk_vnffgd = ForeignKeyField(Vnffgd, db_column='id_vnffgd', null=True)
     fk_Constituent_vnfd = ForeignKeyField(Constituent_vnfd, db_column='id_constituent_vnfd', null=True)
 

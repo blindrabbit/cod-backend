@@ -31,7 +31,7 @@ from VIO.clouds.Openstack.Apis.nova.instance import *
 from VIO.clouds.Openstack.Apis.nova.VM import *
 from VIO.clouds.Openstack.connection.connection import *
 from urls import *
-from env import *
+from vars import *
 from authentication.authentication import *
 from openstack.exceptions import *
 from flask_cors import CORS
@@ -107,65 +107,52 @@ def main():
         thread.start()
 
     def create_laboratory_validade_json(json):
-
         if 'name' not in json:
             return 'name not defined'
-
         if 'user_owner' not in json:
             return 'user_owner not defined'
-
         if 'image' not in json:
             return 'image not defined'
-
         if 'classroom' not in json:
             return 'classroom not defined'
-
         if 'instances' not in json:
             return 'instances not defined'
         else:
             if not isinstance(json['instances'], int):
                 return 'instances must be integer'
-
         if 'description' not in json:
             return 'description not defined'
-
         if 'internetaccess' not in json:
             return 'internetaccess not defined'
         else:
             if not isinstance(json['internetaccess'], bool):
                 return 'internetaccess must be bool [true/false]'
-
         if 'creation_date' not in json:
             return 'creation_date not defined'
         else:
             if not isinstance(datetime.datetime.fromtimestamp(int(json['creation_date'])),
                               datetime.datetime):
                 return 'creation_date must be datetime [timestamp]'
-
         if 'removal_date' not in json:
             return 'removal_date not defined'
         else:
             if not isinstance(datetime.datetime.fromtimestamp(int(json['removal_date'])),
                               datetime.datetime):
                 return 'removal_date must be datetime [timestamp]'
-
         if 'networkfunctions' not in json:
             return 'networkfunctions not defined'
         else:
             for vnf in json['networkfunctions']:
-                print(json['networkfunctions'][vnf])
+                # print(json['networkfunctions'][vnf])
                 if 'image' not in json['networkfunctions'][vnf]:
                     return 'image not defined at ' + vnf
-
                 if 'order' not in json['networkfunctions'][vnf]:
                     return 'order not defined at ' + vnf
                 else:
                     if not isinstance(json['networkfunctions'][vnf]['order'], int):
                         return 'order defined at ' + vnf + ' must be integer'
-
                 if 'configs' not in json['networkfunctions'][vnf]:
                     return 'configs not defined at ' + vnf
-
         return False
 
     @app.route('/beta/listImages/', methods=['POST', 'GET', 'DELETE'])
@@ -305,7 +292,13 @@ def main():
         try:
 
             user_name = 'renancs'  # recuperar o nome do FRONTEND
-            user_id = '1234567890'  # recuperar o ID do FRONTEND
+            user_id = '2'  # recuperar o ID do FRONTEND
+
+            user_from_bd = User.get_or_none(id_user=user_id)
+            if user_from_bd is None:
+                user_from_bd = User.get_by_id(DEFAULT_USER)
+            
+            user_id = user_from_bd.id_user
 
             laboratory_name = LABVER_PREFIX + payload['name']
             laboratory_classroom = payload['classroom']
@@ -393,11 +386,6 @@ def main():
             project_to_bd.save()
 
             id_do_lab = laboratory_to_bd.id_laboratory
-            # link = "<a href='/delete_laboratory/"+str(id_do_lab)+"'>Apagar o LAB - "+str(id_do_lab)+"</a>"
-
-            user_from_bd = User.get_or_none(user_id)
-            if user_from_bd is None:
-                user_from_bd = User.get_by_id(0)
 
             if user_from_bd.token_OSM == '':
                 token = tokens.create_token()
@@ -415,7 +403,6 @@ def main():
                         user_from_bd.save()
                         token = str(token['id'])
 
-            # print('TOKEN VALUE:',token)
             vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
 
             vimAccountId = {}
@@ -429,6 +416,7 @@ def main():
             print('OSMvim_create_vim')
 
             nsd = OSMNS.create_nsd(laboratory_name, REQUEST_POST1)
+
             nsdId = OSMNS.compose_ns(token, nsd)
             nsName = project_name
 
@@ -438,6 +426,7 @@ def main():
             # Recurso do agendamento, se a data de criação for menor que a data atual,
             # ele instancia no momento da criação. Se não, será inicializado por outro metodo de inicialização.
             if creation_date <= datetime.datetime.now():
+                # print(token, nsName, nsdId, vimAccountId['id'])
                 nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
 
                 undo['OSMNS_instantiate_ns'] = nsdId_instance
@@ -486,7 +475,7 @@ def main():
                     print('apagar no OSM VIM')
                     OSMvim.delete_vim(token, undo['OSMvim_create_vim'])
 
-            if 'ERROcreate_project_openstack' in undo:
+            if 'create_project_openstack' in undo:
                 print('apagar projeto')
                 delete_project(undo['create_project_openstack'], connection_openstack)
 
@@ -499,25 +488,32 @@ def main():
     @app.route('/testemodel')
     def testemodel():
         a = 10 + 10
+        id_user = 'qwaqswqqweqw'
+        user_from_bd = User.get_or_none(id_user=id_user)
+        if user_from_bd is None:
+            print('não encontrou usuário')
+            user_from_bd = User.get_by_id(1)
 
-        var = create_laboratory_validade_json(REQUEST_POST1)
-        if var:
-            print(var)
-        # laboratory_id = 57
+        print('user_from_bd') 
+        print(user_from_bd.name)   
+        # var = create_laboratory_validade_json(REQUEST_POST1)
+        # if var:
+        #     print(var)
+        # # laboratory_id = 57
 
-        creation_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['creation_date']))
-        removal_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['removal_date']))
+        # creation_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['creation_date']))
+        # removal_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['removal_date']))
 
-        print('11111111111111111111111111111111111111111')
-        print(creation_date)
+        # print('11111111111111111111111111111111111111111')
+        # print(creation_date)
 
-        if creation_date <= datetime.datetime.now():
-            print('Data de criação menor que agora!')
-        if removal_date <= datetime.datetime.now():
-            print('Data de remoção menor que agora!')
-        else:
-            print('Data de remoção maior que agora!')
-            print(removal_date)
+        # if creation_date <= datetime.datetime.now():
+        #     print('Data de criação menor que agora!')
+        # if removal_date <= datetime.datetime.now():
+        #     print('Data de remoção menor que agora!')
+        # else:
+        #     print('Data de remoção maior que agora!')
+        #     print(removal_date)
 
         return 'DEU BOM'
 
