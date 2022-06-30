@@ -46,6 +46,11 @@ from operator import itemgetter
 from os import getenv
 from random import randint
 
+# import logging
+# logger = logging.getLogger('peewee')
+# logger.addHandler(logging.StreamHandler())
+# logger.setLevel(logging.DEBUG)
+
 requests.packages.urllib3.disable_warnings()
 
 
@@ -66,7 +71,7 @@ def main():
         def run_scheduler():
             print("Starting Thread to monitor laboratory schedules.")
             while True:
-                time.sleep(100)
+                time.sleep(10)
                 query = (Laboratory
                          .select())
                 laboratories = {}
@@ -74,34 +79,76 @@ def main():
                 laboratories['create'] = []
 
                 for lab in query:
-                    lab_query = (Laboratory
-                                 .select(Laboratory, User, Project, Networkservice, Project.name.alias('proj_name'))
-                                 .join(User)
-                                 .join(Project)
-                                 .join(Networkservice)
-                                 .where(Laboratory.id_laboratory == lab.id_laboratory)).dicts().get()
+                    laboratory_id = lab.id_laboratory
+                    print('ID LAB', laboratory_id)
+                    # lab_query = (Laboratory
+                    #              .select(Laboratory, User, Project, Networkservice, 
+                    #                     Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
+                    #              .join(User)
+                    #              .join(Project)
+                    #              .join(Networkservice)
+                    #              .where(Laboratory.id_laboratory == lab.id_laboratory)).dicts().get()
 
-                    token = lab_query['token_OSM']
-                    nsName = lab_query['proj_name']
-                    nsdId = lab_query['id_osm_ns_instance']
-                    vimAccountId = lab_query['id_osm_vim']
+                    # lab_query = (Laboratory
+                    #              .select(Laboratory, 
+                    #                     Laboratory.id_laboratory,
+                    #                     User, Project, 
+                    #                     Project.id_project,
+                    #                     Project.id_laboratory,
+                    #                     Networkservice, 
+                    #                     Networkservice.id_osm_vim.alias('id_vim'), 
+                    #                     Networkservice.id_project,
+                    #                     Project.name.alias('proj_name'))
+                    #              .join(User)
+                    #              .join(Project)
+                    #              .join(Networkservice)
+                    #              .where(Laboratory.id_laboratory == lab.id_laboratory and
+                    #                     Laboratory.id_laboratory == Project.id_laboratory and
+                    #                     Project.id_project == Networkservice.id_project
+                    #              )).dicts()
+
+                    laboratory_from_bd = (Laboratory
+                                            .select(Laboratory, User, Project, Networkservice, 
+                                                    Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
+                                            .join(User)
+                                            .join(Project)
+                                            .join(Networkservice)
+                                            .where(Laboratory.id_laboratory == laboratory_id))
+
+                    laboratory = laboratory_from_bd.dicts().get()
+                    print(lab_query)
+                    # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',lab_query)
+                    # print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                    token = laboratory['token_OSM']
+                    nsName = laboratory['proj_name']
+                    nsdId = laboratory['id_osm_ns_instance']
+                    vimAccountId = laboratory['id_vim']
 
                     retorno = OSMNS.get_ns_resource(token, nsdId)
+                    # print('<><><><><><><><><><><><><>><><>\n\n', retorno)
+                    # print('<><><><><><><><><><><><><>><><>')
+                    # print(token, nsName, nsdId, vimAccountId )
+                    # print("creation_date -> " + str(lab_query['creation_date']))
+                    # print("removal_date -> " + str(lab_query['removal_date']))
+                    # print("now_date -> " + str(datetime.datetime.now()))
+
                     if 'nsState' not in retorno:
-                        if lab_query['creation_date'] <= datetime.datetime.now():
-                            ns_instantiated = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
+                        if laboratory['creation_date'] <= datetime.datetime.now():
+                            print(laboratory['creation_date'], 'está tentando criar um novo lab!')
+                            # ns_instantiated = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
                             dic = {nsdId: nsName}
                             laboratories['create'].append(dic)
                     if 'nsState' in retorno:
                         if retorno['nsState'] == 'READY':
-                            if lab_query['removal_date'] < datetime.datetime.now():
+                            if laboratory['removal_date'] < datetime.datetime.now():
+                                print(laboratory['creation_date'], 'está tentando remover um lab!')
                                 # ns_terminaded = OSMNS.delete_ns_instantiate(token, nsdId)
-                                ns_terminaded = delete_laboratory(lab_query['id_laboratory'])
+                                # ns_terminaded = delete_laboratory(lab_query['id_laboratory'])
                                 dic = {nsdId: nsName}
                                 laboratories['removal'].append(dic)
 
                 print(laboratories)
-                time.sleep(200)
+                time.sleep(20)
 
         thread = threading.Thread(target=run_scheduler)
         thread.start()
@@ -244,11 +291,12 @@ def main():
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
         laboratory_from_bd = (Laboratory
-                              .select(Laboratory, User, Project, Networkservice)
-                              .join(User)
-                              .join(Project)
-                              .join(Networkservice)
-                              .where(Laboratory.id_laboratory == laboratory_id))
+                                 .select(Laboratory, User, Project, Networkservice, 
+                                        Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
+                                 .join(User)
+                                 .join(Project)
+                                 .join(Networkservice)
+                                 .where(Laboratory.id_laboratory == laboratory_id))
 
         laboratory = laboratory_from_bd.dicts().get()
 
@@ -324,6 +372,8 @@ def main():
                 classroom=laboratory_classroom,
                 description=laboratory_description,
                 instances=laboratory_instances,
+                creation_date=creation_date,
+                removal_date=removal_date,
                 fk_user=User.select().where(User.id_user == user_id)
             )
 

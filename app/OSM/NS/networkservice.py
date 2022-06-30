@@ -108,6 +108,7 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId):
     # print('Before Instantiate +++++++++++++++++++++++++++++++++++++++++')
     # print(response.json())
     json = response.json()
+    print('---------------------------\n',json)
 
     method_osm = "/nslcm/v1/ns_instances/"+json['id']+"/instantiate/"
     url = url_osm+method_osm
