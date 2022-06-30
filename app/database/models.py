@@ -60,7 +60,7 @@ class Project(BaseModel):
     id_project = CharField(max_length=100, primary_key=True)
     name = CharField(max_length=100, unique=True)
     creation_date = DateField(default=datetime.now)
-    fk_user = ForeignKeyField(User, db_column='id_user', null=True)
+    fk_user = ForeignKeyField(User, db_column='id_user')
     fk_laboratory = ForeignKeyField(Laboratory, db_column='id_laboratory')
     description = CharField(max_length=100)
     cidr = CharField(max_length=100)
@@ -118,7 +118,7 @@ class Constituent_vnfd(BaseModel):
 
 
 class Networkservice(BaseModel):
-    id_networkservice = BigIntegerField(primary_key=True, unique=True,
+    id_networkservice = IntegerField(primary_key=True, unique=True,
             constraints=[SQL('AUTO_INCREMENT')])
     id_osm_ns_instance = CharField(max_length=100)
     id_osm_nsd = CharField(max_length=100)
