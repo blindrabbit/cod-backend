@@ -37,8 +37,8 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 
 
 REQUEST_POST1 = {
-    "name": "Teste3",
-    "user_owner": "Teste3",
+    "name": "Teste4",
+    "user_owner": "Teste4",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
     "instances": 1,

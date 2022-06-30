@@ -98,7 +98,13 @@ def main():
                     nsdId = laboratory['id_osm_ns_instance']
                     vimAccountId = laboratory['id_vim']
 
+                    tokenInfo = tokens.get_token_info(token)
+                    if 'code' in tokenInfo:
+                        if tokenInfo['code'] == 'UNAUTHORIZED':  # token gravado não existe mais, renovar
+                            token = tokens.create_token()
+
                     retorno = OSMNS.get_ns_resource(token, nsdId)
+                    print('>>>>>>>>>>>>>>>>>>>>', retorno)
 
                     if 'nsState' not in retorno:
                         if laboratory['creation_date'] <= datetime.datetime.now():
@@ -111,7 +117,7 @@ def main():
                             if laboratory['removal_date'] < datetime.datetime.now():
                                 print(laboratory['creation_date'], 'está tentando remover um lab!')
                                 # ns_terminaded = OSMNS.delete_ns_instantiate(token, nsdId)
-                                # ns_terminaded = delete_laboratory(lab_query['id_laboratory'])
+                                ns_terminaded = delete_laboratory(laboratory['id_laboratory'])
                                 dic = {nsdId: nsName}
                                 laboratories['removal'].append(dic)
 
@@ -192,8 +198,9 @@ def main():
                 print("error", error)
                 return 'erro não tratado.', 400
 
-    @app.route('/beta/create_laboratory')
+    @app.route('/beta/create_laboratory', methods=['POST', 'GET'])
     def beta_create_laboratory():
+        # print(request)
         if request.method == 'GET':
             return 'Get Method not allowed', 400
 
@@ -206,7 +213,7 @@ def main():
 
             try:
                 user_name = 'renancs'  # recuperar o nome do FRONTEND
-                user_id = '1234567890'  # recuperar o ID do FRONTEND
+                user_id = data['user_owner'] # recuperar o ID do FRONTEND
 
                 laboratory_name = LABVER_PREFIX + data['name']
                 laboratory_classroom = data['classroom']
@@ -285,13 +292,13 @@ def main():
 
         if laboratory:
             return_del_ns_instance = OSMNS.delete_ns_instantiate(token, laboratory['id_osm_ns_instance'])
-            print(return_del_ns_instance)
+            # print(return_del_ns_instance)
 
             return_del_nsd = OSMNS.delete_nsd(token, laboratory['id_osm_nsd'])
-            print(return_del_nsd)
+            # print(return_del_nsd)
 
             return_del_vim = OSMvim.delete_vim(token, laboratory['id_osm_vim'])
-            print(return_del_vim)
+            # print(return_del_vim)
 
             delete_router(laboratory['openstack_id_router'],
                           laboratory['openstack_id_router_gateway_port'],
