@@ -73,53 +73,57 @@ def main():
             while True:
                 time.sleep(10)
                 query = (Laboratory
-                         .select())
+                         .select()
+                         .where((Laboratory.status == 'scheduled') | 
+                                 (Laboratory.status == 'instantiated'))
+                        )
                 laboratories = {}
                 laboratories['removal'] = []
                 laboratories['create'] = []
 
-                for lab in query:
-                    laboratory_id = lab.id_laboratory
-                    print('ID LAB', laboratory_id)
+                print(query.get_or_none())
+                if query.get_or_none() != None:
+                    for lab in query:
+                        laboratory_id = lab.id_laboratory
+                        print('ID LAB', laboratory_id)
 
-                    laboratory_from_bd = (Laboratory
-                                            .select(Laboratory, User, Project, Networkservice, 
-                                                    Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
-                                            .join(User)
-                                            .join(Project)
-                                            .join(Networkservice)
-                                            .where((Laboratory.id_laboratory == laboratory_id) &
-                                                   (Project.id_laboratory == laboratory_id)))
+                        laboratory_from_bd = (Laboratory
+                                                .select(Laboratory, User, Project, Networkservice, 
+                                                        Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
+                                                .join(User)
+                                                .join(Project)
+                                                .join(Networkservice)
+                                                .where((Laboratory.id_laboratory == laboratory_id) &
+                                                    (Project.id_laboratory == laboratory_id)))
 
+                        laboratory = laboratory_from_bd.dicts().get()
+                        token = laboratory['token_OSM']
+                        nsName = laboratory['proj_name']
+                        nsdId = laboratory['id_osm_ns_instance']
+                        vimAccountId = laboratory['id_vim']
 
-                    laboratory = laboratory_from_bd.dicts().get()
-                    token = laboratory['token_OSM']
-                    nsName = laboratory['proj_name']
-                    nsdId = laboratory['id_osm_ns_instance']
-                    vimAccountId = laboratory['id_vim']
+                        tokenInfo = tokens.get_token_info(token)
+                        if 'code' in tokenInfo:
+                            if tokenInfo['code'] == 'UNAUTHORIZED':  # token gravado não existe mais, renovar
+                                token = tokens.create_token()
 
-                    tokenInfo = tokens.get_token_info(token)
-                    if 'code' in tokenInfo:
-                        if tokenInfo['code'] == 'UNAUTHORIZED':  # token gravado não existe mais, renovar
-                            token = tokens.create_token()
+                        retorno = OSMNS.get_ns_resource(token, nsdId)
+                        print('>>>>>>>>>>>>>>>>>>>>', retorno)
 
-                    retorno = OSMNS.get_ns_resource(token, nsdId)
-                    print('>>>>>>>>>>>>>>>>>>>>', retorno)
-
-                    if 'nsState' not in retorno:
-                        if laboratory['creation_date'] <= datetime.datetime.now():
-                            print(laboratory['creation_date'], 'está tentando criar um novo lab!')
-                            # ns_instantiated = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
-                            dic = {nsdId: nsName}
-                            laboratories['create'].append(dic)
-                    if 'nsState' in retorno:
-                        if retorno['nsState'] == 'READY':
-                            if laboratory['removal_date'] < datetime.datetime.now():
-                                print(laboratory['creation_date'], 'está tentando remover um lab!')
-                                # ns_terminaded = OSMNS.delete_ns_instantiate(token, nsdId)
-                                ns_terminaded = delete_laboratory(laboratory['id_laboratory'])
+                        if 'nsState' not in retorno:
+                            if laboratory['creation_date'] <= datetime.datetime.now():
+                                print(laboratory['creation_date'], 'está tentando criar um novo lab!')
+                                # ns_instantiated = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId)
                                 dic = {nsdId: nsName}
-                                laboratories['removal'].append(dic)
+                                laboratories['create'].append(dic)
+                        if 'nsState' in retorno:
+                            if retorno['nsState'] == 'READY':
+                                if laboratory['removal_date'] < datetime.datetime.now():
+                                    print(laboratory['creation_date'], 'está tentando remover um lab!')
+                                    # ns_terminaded = OSMNS.delete_ns_instantiate(token, nsdId)
+                                    ns_terminaded = delete_laboratory(laboratory['id_laboratory'])
+                                    dic = {nsdId: nsName}
+                                    laboratories['removal'].append(dic)
 
                 print(laboratories)
                 time.sleep(20) 
@@ -462,9 +466,13 @@ def main():
             if creation_date <= datetime.datetime.now():
                 # print(token, nsName, nsdId, vimAccountId['id'])
                 nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
+                laboratory_to_bd.status = 'instantiated'
 
                 undo['OSMNS_instantiate_ns'] = nsdId_instance
                 print('OSMNS_instantiate_ns')
+            else:
+                laboratory_to_bd.status = 'scheduled'
+
 
             networkservice_to_bd = Networkservice.create(
                 id_networkservice=nsdId,
@@ -477,6 +485,7 @@ def main():
 
             retorno = {'id': id_do_lab}
 
+            laboratory_to_bd.save()
             return retorno, 201
 
         except Exception as error:

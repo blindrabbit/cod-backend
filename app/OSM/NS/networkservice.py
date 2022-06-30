@@ -125,16 +125,16 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId):
     # print('After Instantiate +++++++++++++++++++++++++++++++++++++++++')
     # print('nsdId ',json['id'])
     # print(response.json())
-    # method_osm = "/nslcm/v1/ns_instances/"+id
-    # url = url_osm+method_osm    
+    method_osm = "/nslcm/v1/ns_instances/"+json['id']
+    url = url_osm+method_osm    
 
-    # finished = False
-    # while finished == False:
-    #     response = requests.request(
-    #         method="GET", url=url, headers=headers, verify=False)
-    #     status = response.json()
-    #     if status['nsState'] == 'READY':
-    #         finished = True
+    finished = False
+    while finished == False:
+        response = requests.request(
+            method="GET", url=url, headers=headers, verify=False)
+        status = response.json()
+        if status['nsState'] == 'READY':
+            finished = True
 
     return json
 

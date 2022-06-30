@@ -44,8 +44,8 @@ REQUEST_POST1 = {
     "instances": 1,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
-    "creation_date": '1656564559',
-    "removal_date": '1656584559',
+    "creation_date": '1656601832',
+    "removal_date": '1656602432',
     "networkfunctions": {
         "vnf1": {
             "image": "openwrt_vnfd",

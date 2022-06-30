@@ -51,7 +51,7 @@ class Laboratory(BaseModel):
     removal_date = DateTimeField(default=datetime.now)
     # fk_network_service = ForeignKeyField(Networkservice, backref='laboratory')
     fk_user = ForeignKeyField(User, backref='laboratories')
-    # status = CharField(max_length=13) # scheduled/removed/instantiated
+    status = CharField(max_length=13) # scheduled/removed/instantiated
 
     class Meta:
         table_name = 'laboratory'
