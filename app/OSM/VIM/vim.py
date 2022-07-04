@@ -100,9 +100,10 @@ def create_vim(token, projname):
         "vim_password": VIM_PASS,
         "config": { 
             "insecure": True,
-            "use_existing_flavors": True,
+            # "use_existing_flavors": True,
+            "use_existing_flavors": False,
             "additionalProp1": {}
-        }
+        } #'{ vld: [ {name: dataNet, vim-network-name: rede-data} ] }'")
     }
 
     headers = {

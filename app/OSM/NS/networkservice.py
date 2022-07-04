@@ -116,7 +116,11 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId):
     payload = {
         "nsName": nsName,
         "nsdId": json['id'],
-        "vimAccountId": vimAccountId
+        "vimAccountId": vimAccountId,
+        "vld" : [ {
+                "name": "dataNet",
+                "vim-network-name": nsName+"rede-data"
+            } ]
     }
 
     response = requests.request(
@@ -190,7 +194,7 @@ def compose_ns(token, json):
     else:            
         return id_json['code']
 
-def create_vnffgd(json):
+def create_vnffgd(json, cidr):
     payload = json
 
     vnffgd={}
@@ -236,7 +240,8 @@ def create_vnffgd(json):
     classifier_match_att["destination-port"]="5001:5011"
     classifier_match_att["id"]="match1"
     classifier_match_att["ip-proto"]=17
-    classifier_match_att["source-ip-address"]="10.10.10.11"
+    # classifier_match_att["source-ip-address"]="10.10.10.11"
+    classifier_match_att["source-ip-address"]=cidr.replace('.0/24', '.11')
 
     classifier["match-attributes"].append(classifier_match_att)
 
@@ -245,7 +250,7 @@ def create_vnffgd(json):
 
     return vnffgd
 
-def create_nsd(nsd_name, json):
+def create_nsd(nsd_name, cidr, json):
     payload = json
 
     d={}
@@ -279,7 +284,8 @@ def create_nsd(nsd_name, json):
         vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
         vnfd_connection_point_ref["vnfd-id-ref"]=payload["image"]
         vnfd_connection_point_ref["member-vnf-index-ref"]=10+x
-        vnfd_connection_point_ref["ip-address"]="10.10.10."+str(10+x) #
+        # vnfd_connection_point_ref["ip-address"]="10.10.10."+str(10+x) #
+        vnfd_connection_point_ref["ip-address"]=cidr.replace('.0/24', '.'+str(10+x))
         vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
 
     for vnf in payload["networkfunctions"]:
@@ -310,7 +316,8 @@ def create_nsd(nsd_name, json):
     dhcp_params={}
     dhcp_params["count"]=100
     dhcp_params["enabled"]=True
-    dhcp_params["start-address"]="10.10.10.10"
+    # dhcp_params["start-address"]="10.10.10.10"
+    dhcp_params["start-address"]=cidr.replace('.0/24', '.10')
 
     ip_profiles["ip-profile-params"]["dhcp-params"]=dhcp_params
     ip_profiles["ip-profile-params"]["dns-server"]=[]
@@ -318,9 +325,11 @@ def create_nsd(nsd_name, json):
     dns_server["address"]="8.8.8.8"
     ip_profiles["ip-profile-params"]["dns-server"].append(dns_server)
     
-    ip_profiles["ip-profile-params"]["gateway-address"]="10.10.10.1"
+    # ip_profiles["ip-profile-params"]["gateway-address"]="10.10.10.1"
+    ip_profiles["ip-profile-params"]["gateway-address"]=cidr.replace('.0/24', '.1')
     ip_profiles["ip-profile-params"]["ip-version"]="ipv4"
-    ip_profiles["ip-profile-params"]["subnet-address"]="10.10.10.0/24"
+    # ip_profiles["ip-profile-params"]["subnet-address"]="10.10.10.0/24"
+    ip_profiles["ip-profile-params"]["subnet-address"]=cidr
     
     constituent_vnfd=[]
     cvnfd={}
@@ -346,10 +355,10 @@ def create_nsd(nsd_name, json):
 
     #DESABILITANDO A UTILIZAÇÃO DO SFC NESTE MOMENTO
 
-    # vnffgd = create_vnffgd(payload["networkfunctions"])
+    vnffgd = create_vnffgd(payload["networkfunctions"], cidr)
 
-    # nsd["vnffgd"]=[]
-    # nsd["vnffgd"].append(vnffgd)
+    nsd["vnffgd"]=[]
+    nsd["vnffgd"].append(vnffgd)
 
     d['nsd:nsd-catalog']["nsd"]=[]
     d['nsd:nsd-catalog']["nsd"].append(nsd)

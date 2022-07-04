@@ -37,15 +37,15 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 
 
 REQUEST_POST1 = {
-    "name": "Teste4",
-    "user_owner": "Teste4",
+    "name": "Teste10",
+    "user_owner": "Teste10",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
     "instances": 1,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
     "creation_date": '1656601832',
-    "removal_date": '1656602432',
+    "removal_date": '1676682331',
     "networkfunctions": {
         "vnf1": {
             "image": "openwrt_vnfd",

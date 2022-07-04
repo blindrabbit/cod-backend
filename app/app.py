@@ -4,6 +4,7 @@
 # $env:OS_CLIENT_CONFIG_FILE="clouds.yaml"
 # PS C:\Users\1918648\Documents\GitHub\cod-backend> .\env\Scripts\Activate
 # (env) PS C:\Users\1918648\Documents\GitHub\cod-backend> $env:OS_CLIENT_CONFIG_FILE="./app/clouds.yaml"
+from ipaddress import ip_address
 import json
 import threading
 from xmlrpc.client import boolean
@@ -81,11 +82,11 @@ def main():
                 laboratories['removal'] = []
                 laboratories['create'] = []
 
-                print(query.get_or_none())
+                # print(query.get_or_none())
                 if query.get_or_none() != None:
                     for lab in query:
                         laboratory_id = lab.id_laboratory
-                        print('ID LAB', laboratory_id)
+                        # print('ID LAB', laboratory_id)
 
                         laboratory_from_bd = (Laboratory
                                                 .select(Laboratory, User, Project, Networkservice, 
@@ -108,7 +109,7 @@ def main():
                                 token = tokens.create_token()
 
                         retorno = OSMNS.get_ns_resource(token, nsdId)
-                        print('>>>>>>>>>>>>>>>>>>>>', retorno)
+                        # print('>>>>>>>>>>>>>>>>>>>>', retorno)
 
                         if 'nsState' not in retorno:
                             if laboratory['creation_date'] <= datetime.datetime.now():
@@ -453,7 +454,7 @@ def main():
             undo['OSMvim_create_vim'] = vimAccountId['id']
             print('OSMvim_create_vim')
 
-            nsd = OSMNS.create_nsd(laboratory_name, REQUEST_POST1)
+            nsd = OSMNS.create_nsd(laboratory_name, cidr, REQUEST_POST1)
 
             nsdId = OSMNS.compose_ns(token, nsd)
             nsName = project_name
@@ -732,6 +733,25 @@ def main():
         # laboratories['removal'].append(dic)
         # laboratories['removal'].append(dic)
         # print(laboratories)
+        
+
+        # cidr = '10.' + str(randint(0, 254)) + '.' + str(randint(0, 254)) + '.0/24'
+        # gateway = cidr.replace('.0/24', '.1')
+
+        # x = 1
+        # ip_address1 = cidr.replace('.0/24', '.'+str(10+x))
+
+        # start_address = cidr.replace('.0/24', '.10')
+
+        # # vnfd_connection_point_ref["ip-address"]="10.10.10."+str(10+x) #
+        # print(cidr, gateway, ip_address1, start_address)
+        # # dhcp_params["start-address"]="10.10.10.10"
+
+        
+        # ip_profiles["ip-profile-params"]["gateway-address"]="10.10.10.1"
+        # ip_profiles["ip-profile-params"]["subnet-address"]="10.10.10.0/24"
+    
+
         return 'labs'
         # recebe as informações do laboratorio do FRONEND
         # info_lab = request.get_json()
@@ -777,7 +797,7 @@ def main():
     def createLaboratory():
 
         cloud = 'openstack-serra'
-        payload = REQUEST_POST
+        # payload = REQUEST_POST
 
         connection_openstack = create_connection_openstack_clouds_file(cloud)
         if request.method == 'GET':
