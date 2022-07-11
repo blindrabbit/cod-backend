@@ -31,6 +31,7 @@ from VIO.clouds.Openstack.Apis.nova.flavor import *
 from VIO.clouds.Openstack.Apis.nova.instance import *
 from VIO.clouds.Openstack.Apis.nova.VM import *
 from VIO.clouds.Openstack.connection.connection import *
+from VIO.clouds.Gnocchi import *
 from urls import *
 from vars import *
 from authentication.authentication import *
@@ -67,6 +68,11 @@ def main():
     # def page_not_found(e):
     #     # note that we set the 404 status explicitly
     #     return "", 404
+
+    def date_time_now():
+        return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
     @app.before_first_request
     def activate_schedule():
         def run_scheduler():
@@ -270,14 +276,6 @@ def main():
 
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-        # laboratory_from_bd = (Laboratory
-        #                          .select(Laboratory, User, Project, Networkservice, 
-        #                                 Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
-        #                          .join(User)
-        #                          .join(Project)
-        #                          .join(Networkservice)
-        #                          .where(Laboratory.id_laboratory == laboratory_id))
-
         laboratory_from_bd = (Laboratory
                                 .select(Laboratory, User, Project, Networkservice, 
                                         Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
@@ -288,6 +286,15 @@ def main():
                                         (Project.id_laboratory == laboratory_id)))
 
         laboratory = laboratory_from_bd.dicts().get()
+
+
+        testeLiberarRecursos = Tests_Methods.create(
+            fk_tests = laboratory['fk_tests'],
+            fk_methods =  5
+        )
+
+# ---------- TESTE tempo para liberação dos recursos - tempo inicial
+        testeLiberarRecursos.start_date_test_methods = date_time_now()
 
         token = laboratory['token_OSM']
         tokenInfo = tokens.get_token_info(token)
@@ -313,6 +320,11 @@ def main():
 
             laboratory_from_bd.get().delete_instance(recursive=True)
 
+
+# ---------- TESTE tempo para liberação dos recursos - tempo inicial
+        testeLiberarRecursos.finish_date_test_methods = date_time_now()
+        testeLiberarRecursos.save()
+
         return '', 204
         # return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
 
@@ -327,6 +339,30 @@ def main():
         else:
             False
         try:
+
+            # inicialização da coleta dos testes de tempo de criação
+            teste = Tests.create( #datetime.nowdate_time_now()
+                start_date_test = date_time_now(),
+                # start_date_test = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                description = DESCRIPTION_TEST
+            )
+
+            testeCriarUsuario = Tests_Methods.create(
+                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
+                fk_methods =  1
+            )
+            testeCriarProjeto = Tests_Methods.create(
+                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
+                fk_methods =  2
+            )
+            testeConfigurarRede = Tests_Methods.create(
+                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
+                fk_methods =  3
+            )
+            testeAlocarRecursos = Tests_Methods.create(
+                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
+                fk_methods =  4
+            )
 
             user_name = 'renancs'  # recuperar o nome do FRONTEND
             user_id = '2'  # recuperar o ID do FRONTEND
@@ -363,7 +399,8 @@ def main():
                 instances=laboratory_instances,
                 creation_date=creation_date,
                 removal_date=removal_date,
-                fk_user=User.select().where(User.id_user == user_id)
+                fk_user=User.select().where(User.id_user == user_id),
+                fk_tests=teste.id_tests
             )
 
             # print(laboratory_to_bd['id_laboratory'])
@@ -371,6 +408,9 @@ def main():
             print('laboratory_to_bd')
 
             connection_openstack = create_connection_openstack_clouds_file(cloud)
+
+# ---------- TESTE tempo de criação de um projeto - tempo inicial
+            testeCriarProjeto.start_date_test_methods = date_time_now()
 
             project = create_project(user_name, project_name, project_description, connection_openstack)
 
@@ -388,6 +428,12 @@ def main():
             undo['project_to_bd'] = project['id']
             print('project_to_bd')
 
+# ---------- TESTE tempo de criação de um projeto - tempo final
+            testeCriarProjeto.finish_date_test_methods = date_time_now()
+
+# ---------- TESTE tempo de configuração de rede - tempo inicial
+            testeConfigurarRede.start_date_test_methods = date_time_now()
+            
             network = create_network(network_name, project['id'], connection_openstack)
 
             undo['create_network_openstack'] = network['id']
@@ -423,6 +469,14 @@ def main():
             project_to_bd.openstack_id_network = network['id']
 
             project_to_bd.save()
+
+
+# ---------- TESTE tempo de configuração de rede - tempo final
+            testeConfigurarRede.finish_date_test_methods = date_time_now()
+
+# ---------- TESTE tempo para Alocar recursos - tempo inicial
+            testeAlocarRecursos.start_date_test_methods = date_time_now()
+
 
             id_do_lab = laboratory_to_bd.id_laboratory
 
@@ -487,6 +541,17 @@ def main():
             retorno = {'id': id_do_lab}
 
             laboratory_to_bd.save()
+
+# ---------- TESTE tempo para Alocar recursos - tempo final
+            testeAlocarRecursos.finish_date_test_methods = date_time_now()
+
+            teste.save()
+
+            testeCriarUsuario.save()
+            testeCriarProjeto.save()
+            testeConfigurarRede.save()
+            testeAlocarRecursos.save()
+	
             return retorno, 201
 
         except Exception as error:
@@ -531,267 +596,33 @@ def main():
 
     @app.route('/testemodel')
     def testemodel():
-        a = 10 + 10
-        id_user = 'qwaqswqqweqw'
-        user_from_bd = User.get_or_none(id_user=id_user)
-        if user_from_bd is None:
-            print('não encontrou usuário')
-            user_from_bd = User.get_by_id(1)
-
-        print('user_from_bd') 
-        print(user_from_bd.name)   
-        # var = create_laboratory_validade_json(REQUEST_POST1)
-        # if var:
-        #     print(var)
-        # # laboratory_id = 57
-
-        # creation_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['creation_date']))
-        # removal_date = datetime.datetime.fromtimestamp(int(REQUEST_POST1['removal_date']))
-
-        # print('11111111111111111111111111111111111111111')
-        # print(creation_date)
-
-        # if creation_date <= datetime.datetime.now():
-        #     print('Data de criação menor que agora!')
-        # if removal_date <= datetime.datetime.now():
-        #     print('Data de remoção menor que agora!')
-        # else:
-        #     print('Data de remoção maior que agora!')
-        #     print(removal_date)
-
-        return 'DEU BOM'
-
-        return var
-        # laboratory_from_bd = (Laboratory
-        #     .select(Laboratory, User, Project, Networkservice)
-        #     .join(User)
-        #     .join(Project)
-        #     .join(Networkservice)
-        #     .where(Laboratory.id_laboratory==laboratory_id))
-
-        # print('<><><><><><><><><<>><><><><><><><><><><><><><>')
-        # laboratory = laboratory_from_bd.dicts().get()
-
-        # print(',.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,.,')
-        # laboratory_from_bd.get().delete_instance(recursive=True)
-
-        # print(laboratory['id_laboratory'])
-        # token = 'hl5mC3C9EEYoBQLSd45l263QypVp3prk'
-        # id_osm_ns_instance='76929e1f-5281-4dd1-b691-aa469bc9867c'
-        # # id_osm_ns_instance='0d22cc4e-b8d4-4756-9f08-5923e70907b6'715a857f-0284-4c2d-ab6f-aedd26742c8f
-        # id_osm_ns_instance='715a857f-0284-4c2d-ab6f-aedd26742c8f'
-
-        # return_ns_resource = OSMNS.get_ns_resource(token, id_osm_ns_instance)
-        # print('---------------------------------------------')
-        # print(return_ns_resource)
-
-        # # return_del_instance = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
-
-        # print('---------------------------------------------')
-        # # print(return_del_instance)
-        # # laboratory_id = 47
-
-        # # # query = (User
-        # # #     .select()
-        # # #     .join(Laboratory)
-        # # #     .where(Laboratory.id_laboratory==laboratory_id))
-
-        # # # for user in query:
-        # # #     token = user.token_OSM
-
-        # # query = (Laboratory
-        #     .select(Laboratory, User, Project, Networkservice)
-        #     .join(User)
-        #     .join(Project)
-        #     .join(Networkservice)
-        #     .where(Laboratory.id_laboratory==laboratory_id)
-        #     # .dicts()
-        #     .get())
-
-        # print('query--------------------------------------------------')
-        # print(type(query))
-        # print('query--------------------------------------------------')
-        # print(query)
-        # print('query-id_laboratory-------------------------------------------------')
-        # print(query.id_laboratory)
-        # print('query-id_osm_vim-------------------------------------------------')
-        # print(query.id_osm_vim)
-
-        # for lab in query:
-        #     print(type(lab))
-        #     print(lab)
-
-        #     # laboratory = lab
-
-        # print(str(laboratory.id_laboratory))
-        # returno = OSMNS.delete_instantiate_ns(token, id_osm_ns_instance)
-        # print(returno)
-        # labId = 47
-        # query = (User
-        #     .select()
-        #     .join(Laboratory)
-        #     .join(Project)
-        #     .join(Networkservice)
-        #     .where(Laboratory.id_laboratory==labId))
-
-        # for lab in query:
-        #     print('blabla')
-        #     print(lab.token_OSM)
-
-        # user_from_bd = User.get_by_id('1234567890')
-        # if user_from_bd.token_OSM == '':
-        #     token = tokens.create_token()
-        #     user_from_bd.token_OSM=str(token['id'])
-        #     user_from_bd.save()
-        # else:
-        #     tokenInfo = tokens.get_token_info(user_from_bd.token_OSM)
-        #     if "_id" in tokenInfo:
-        #         token = tokenInfo['_id']
-        #     if "code" in tokenInfo:
-        #         if tokenInfo['code'] == 'UNAUTHORIZED':
-        #             token = tokens.create_token()
-        #             user_from_bd.token_OSM=str(token['id'])
-        #             user_from_bd.save()
-
-        # project_name = LABVER_PREFIX+'labteste01'
-
-        # vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
-
-        # print(vimAccount)
-        #  user_from_bd = User.get_by_id('1234567890')
-
-        # if user_from_bd.token_OSM == '':
-        #     token = tokens.create_token()
-        #     token = str(token['id'])
-        #     user_from_bd.token_OSM=token
-        #     user_from_bd.save()
-        # else:
-        #     token = tokens.get_token_info(user_from_bd.token_OSM)
-        #     if "code" in token:
-        #         if token['code'] == 'UNAUTHORIZED':
-        #             token = tokens.create_token()
-        #             token = str(token['id'])
-        #             user_from_bd.token_OSM=token
-        #             user_from_bd.save()
-
-        # vimName = 'vim1'
-
-        # project_name = LABVER_PREFIX+'labteste01'
-
-        # print('>>>>>>>>>>>>>>>>>>>>>',token)
-
-        # vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
-        # if not vimAccount:
-        #     vimAccountId = OSMvim.create_vim(token, project_name)
-        # else:
-        #     vimAccountId = vimAccount['_id']
-
-        # laboratory_to_bd = Laboratory(
-        #     name = REQUEST_POST['nome'],
-        #     classroom = REQUEST_POST['turma'],
-        #     description = REQUEST_POST['descricao'],
-        #     instances = REQUEST_POST['instancias'],
-        #     fk_user = User.select().where(User.id_user=='')
-        # )
-
-        # laboratory_to_bd.save()
-        # laboratory_to_bd.networkservice()
-
-        # id_laboratory = BigIntegerField(primary_key=True, unique=True,
-        #         constraints=[SQL('AUTO_INCREMENT')])
-        # name = CharField(max_length=100)
-        # classroom = CharField(max_length=100)
-        # description = CharField(max_length=100)
-        # instances = IntegerField()
-        # dt_start = DateTimeField(default=datetime.now)
-        # creation_date = DateTimeField(default=datetime.now)
-        # fk_project = CharField(max_length=100)
-        # # fk_network_service = ForeignKeyField(networkservice, backref='laboratory')
-        # fk_user = ForeignKeyField(User, backref='laboratories')
-        # server_from_bd = Server.get_or_none(id_server_openstack=data['server_id'])
-        # if server_from_bd is None:
-        #     id = Server.insert(
-        #         name=data['server_nome'],
-        #         id_server_openstack=data['server_id'],
-        #         creation_date=time.time(),
-        #         fk_project=data['project_id'],
-        #         state='emuso',
-        #         cookie='COKKIECOOKIE'
-        #     ).on_conflict('replace').execute()
-
         return 'Vamos testar o modelo! -->'  # +str(vimAccountId)
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
+        cloud = 'openstack-serra'
+        connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-        # laboratories = {}
-        # laboratories['removal'] = []
-        # laboratories['create'] = []
-        # dic = {'id': '1234567890'}
-        # laboratories['removal'].append(dic)
-        # laboratories['removal'].append(dic)
-        # laboratories['removal'].append(dic)
-        # laboratories['removal'].append(dic)
-        # print(laboratories)
+        #Insert Session in Gnocchi object   
+        gnocchi = Gnocchi(session=connection_openstack.session)
+
+        resource_ids_nova=gnocchi.get_resource('nova_compute')
+        # return 'rota de teste'  # +str(vimAccountId)
+        print("RESOURCE ID--> ", resource_ids_nova)
+
+        now=datetime.datetime.now().utcnow()
+        intervalo=60
+        delta = datetime.timedelta(seconds=intervalo)
+        time_past=now-delta
+        START=time_past
+        STOP=now
+        GRANULARITY=60
         
+        resultado = gnocchi.get_last_measure("compute.node.cpu.idle.percent",resource_ids_nova,None,GRANULARITY,START,STOP)
 
-        # cidr = '10.' + str(randint(0, 254)) + '.' + str(randint(0, 254)) + '.0/24'
-        # gateway = cidr.replace('.0/24', '.1')
+        print(resultado)
+        return 'okok', resultado
 
-        # x = 1
-        # ip_address1 = cidr.replace('.0/24', '.'+str(10+x))
-
-        # start_address = cidr.replace('.0/24', '.10')
-
-        # # vnfd_connection_point_ref["ip-address"]="10.10.10."+str(10+x) #
-        # print(cidr, gateway, ip_address1, start_address)
-        # # dhcp_params["start-address"]="10.10.10.10"
-
-        
-        # ip_profiles["ip-profile-params"]["gateway-address"]="10.10.10.1"
-        # ip_profiles["ip-profile-params"]["subnet-address"]="10.10.10.0/24"
-    
-
-        return 'labs'
-        # recebe as informações do laboratorio do FRONEND
-        # info_lab = request.get_json()
-
-        # criação e persistencia do laboratorio no banco de dados
-
-        # Pilha de criação de infraestrutura dentro do Openstack
-
-        # VERIFICAR SE JÁ TEM ALGUM TOKEN, SE TIVER USAR O EXISTENTE
-        # CONSULTAR NO BANCO DE DADOS NA TABELA LABORATORIO - A CRIAR
-        # token = tokens.create_token()
-        # print('----- ',token)
-        # token = token['id']
-        # print('===== ',str(token))
-        # # Pilha de criação de infraestrutura dentro do OSM
-
-        # # SERÁ CRIADA UM VIM PARA CADA LABORATORIO
-        # # Descobrir como passar de modo seguro  a senha e o usuário da conta LABVER
-        # # para criação desta VIM
-        # # Passar o nome do projeto do novo laboratorio 
-        # # openstackUser = Usuário com poder de criação dentro do projeto criado
-        # # openstackPass = Senha do usuário
-        # # labProject = Nome do Projeto criado para o laboratorio
-
-        # # vimId = OSMvim.create_vim(token["id"], openstackUser, openstackPass, labProject)
-        # print('88888888888888888888888888888888888888888888888888888888888')
-
-        # vimAccountId = OSMvim.create_vim(token)
-        # # vimAccountId = {}
-        # # vimAccountId["id"] = "8f3c0414-0ee7-4afe-a2bb-fe089433cdce"
-        # print(vimAccountId)
-        # print('88888888888888888888888888888888888888888888888888888888888')
-
-        # nsd = OSMNS.create_nsd(REQUEST_POST1)
-        # nsdId = OSMNS.compose_ns(token, nsd)
-        # nsName = REQUEST_POST['nome']
-
-        # OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId["id"])
-        # # return str(retorno)
-        return 'Hello World isso é um teste!!!'
 
     @app.route('/createLaboratory/', methods=['POST', 'GET', 'DELETE'])
     def createLaboratory():

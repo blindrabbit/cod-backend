@@ -52,6 +52,7 @@ class Laboratory(BaseModel):
     # fk_network_service = ForeignKeyField(Networkservice, backref='laboratory')
     fk_user = ForeignKeyField(User, backref='laboratories')
     status = CharField(max_length=13) # scheduled/removed/instantiated
+    fk_tests = BigIntegerField( unique=True )
 
     class Meta:
         table_name = 'laboratory'
@@ -131,4 +132,38 @@ class Networkservice(BaseModel):
 
     class Meta:
         table_name = 'networkservice'
-db.create_tables([Services, User, Project, Server, Laboratory, Vnffgd, Constituent_vnfd, Networkservice])
+
+
+class Tests(BaseModel):
+    id_tests=BigIntegerField( unique=True, primary_key=True,
+            constraints=[SQL('AUTO_INCREMENT')])
+    start_date_test = DateTimeField()
+    finish_date_test = DateTimeField()
+    description = CharField(max_length=100)
+
+    class Meta:
+        table_name = 'tests'
+
+class Methods(BaseModel):
+    id_methods=BigIntegerField( unique=True, primary_key=True,
+            constraints=[SQL('AUTO_INCREMENT')])
+    name_methods = CharField(max_length=100)
+
+    class Meta:
+        table_name = 'methods'
+
+class Tests_Methods(BaseModel):
+    id_tests_methods=BigIntegerField( unique=True, primary_key=True,
+            constraints=[SQL('AUTO_INCREMENT')])
+    start_date_test_methods = DateTimeField()
+    finish_date_test_methods = DateTimeField()
+    fk_tests = ForeignKeyField(Tests, db_column='id_tests')
+    fk_methods = ForeignKeyField(Methods, db_column='id_methods')
+
+    class Meta:
+        table_name = 'tests_methods'
+
+
+db.create_tables([Services, User, Project, Server, Laboratory, Vnffgd, Constituent_vnfd, Networkservice, Tests, Methods, Tests_Methods])
+
+

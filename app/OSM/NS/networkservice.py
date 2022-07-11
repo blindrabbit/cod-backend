@@ -239,7 +239,8 @@ def create_vnffgd(json, cidr):
     classifier_match_att={}
     classifier_match_att["destination-port"]="5001:5011"
     classifier_match_att["id"]="match1"
-    classifier_match_att["ip-proto"]=17
+    classifier_match_att["ip-proto"]=6 #TCP
+    # classifier_match_att["ip-proto"]=17 # UDP
     # classifier_match_att["source-ip-address"]="10.10.10.11"
     classifier_match_att["source-ip-address"]=cidr.replace('.0/24', '.11')
 
