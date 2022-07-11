@@ -1,6 +1,3 @@
-from sqlalchemy import true
-
-
 OSM_IP = "10.50.1.126"
 OPENSTACK_IP = "10.50.0.159"
 IP = "172.16.112.56"
@@ -38,24 +35,24 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 #     },
 # }
 
-TEST_ENV=true
-DESCRIPTION_TEST='05VM/0VNF'
+DESCRIPTION_TEST = '1VM/1VNF'
+
 REQUEST_POST1 = {
-    "name": "Teste10",
-    "user_owner": "Teste10",
+    "name": "Teste8",
+    "user_owner": "Teste8",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
-    "instances": 5,
+    "instances": 1,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
-    "creation_date": '1656601832',
-    "removal_date": '1676682331',
+    "creation_date": '1655773901',
+    "removal_date": '1656034212',
     "networkfunctions": {
-        # "vnf1": {
-        #     "image": "openwrt_vnfd",
-        #     "order": 1,
-        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-        # },
+        "vnf1": {
+            "image": "openwrt_vnfd",
+            "order": 1,
+            "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        },
     },
 }
 

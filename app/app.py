@@ -72,7 +72,6 @@ def main():
     def date_time_now():
         return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-
     @app.before_first_request
     def activate_schedule():
         def run_scheduler():
@@ -81,12 +80,10 @@ def main():
                 time.sleep(10)
                 query = (Laboratory
                          .select()
-                         .where((Laboratory.status == 'scheduled') | 
-                                 (Laboratory.status == 'instantiated'))
-                        )
-                laboratories = {}
-                laboratories['removal'] = []
-                laboratories['create'] = []
+                         .where((Laboratory.status == 'scheduled') |
+                                (Laboratory.status == 'instantiated'))
+                         )
+                laboratories = {'removal': [], 'create': []}
 
                 # print(query.get_or_none())
                 if query.get_or_none() != None:
@@ -95,13 +92,14 @@ def main():
                         # print('ID LAB', laboratory_id)
 
                         laboratory_from_bd = (Laboratory
-                                                .select(Laboratory, User, Project, Networkservice, 
-                                                        Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
-                                                .join(User)
-                                                .join(Project)
-                                                .join(Networkservice)
-                                                .where((Laboratory.id_laboratory == laboratory_id) &
-                                                    (Project.id_laboratory == laboratory_id)))
+                                              .select(Laboratory, User, Project, Networkservice,
+                                                      Networkservice.id_osm_vim.alias('id_vim'),
+                                                      Project.name.alias('proj_name'))
+                                              .join(User)
+                                              .join(Project)
+                                              .join(Networkservice)
+                                              .where((Laboratory.id_laboratory == laboratory_id) &
+                                                     (Project.id_laboratory == laboratory_id)))
 
                         laboratory = laboratory_from_bd.dicts().get()
                         token = laboratory['token_OSM']
@@ -133,7 +131,7 @@ def main():
                                     laboratories['removal'].append(dic)
 
                 print(laboratories)
-                time.sleep(20) 
+                time.sleep(20)
 
         thread = threading.Thread(target=run_scheduler)
         thread.start()
@@ -224,7 +222,7 @@ def main():
 
             try:
                 user_name = 'renancs'  # recuperar o nome do FRONTEND
-                user_id = data['user_owner'] # recuperar o ID do FRONTEND
+                user_id = data['user_owner']  # recuperar o ID do FRONTEND
 
                 laboratory_name = LABVER_PREFIX + data['name']
                 laboratory_classroom = data['classroom']
@@ -242,8 +240,8 @@ def main():
                     fk_user=User.select().where(User.id_user == user_id)
                 )
 
-                laboratory_to_bd.id_laboratory
-                retorno = {'id': laboratory_to_bd.id_laboratory}
+                var = laboratory_to_bd.id_laboratory
+                retorno = {'id': var}
                 return retorno, 200
 
             except Exception as error:
@@ -277,24 +275,27 @@ def main():
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
         laboratory_from_bd = (Laboratory
-                                .select(Laboratory, User, Project, Networkservice, 
-                                        Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
-                                .join(User)
-                                .join(Project)
-                                .join(Networkservice)
-                                .where((Laboratory.id_laboratory == laboratory_id) &
-                                        (Project.id_laboratory == laboratory_id)))
+                              .select(Laboratory, User, Project, Networkservice,
+                                      Networkservice.id_osm_vim.alias('id_vim'), Project.name.alias('proj_name'))
+                              .join(User)
+                              .join(Project)
+                              .join(Networkservice)
+                              .where((Laboratory.id_laboratory == laboratory_id) &
+                                     (Project.id_laboratory == laboratory_id)))
 
         laboratory = laboratory_from_bd.dicts().get()
+        print(laboratory)
+        tests_select = (Tests
+                        .select()
+                        .where(Tests.fk_laboratory == laboratory_id))
 
-
-        testeLiberarRecursos = Tests_Methods.create(
-            fk_tests = laboratory['fk_tests'],
-            fk_methods =  5
+        teste_liberar_recursos = Tests_Methods.create(
+            id_tests=tests_select.get(),
+            id_methods=5
         )
 
-# ---------- TESTE tempo para liberação dos recursos - tempo inicial
-        testeLiberarRecursos.start_date_test_methods = date_time_now()
+        # ---------- TESTE tempo para liberação dos recursos - tempo inicial
+        teste_liberar_recursos.start_date_test_methods = date_time_now()
 
         token = laboratory['token_OSM']
         tokenInfo = tokens.get_token_info(token)
@@ -320,10 +321,9 @@ def main():
 
             laboratory_from_bd.get().delete_instance(recursive=True)
 
-
-# ---------- TESTE tempo para liberação dos recursos - tempo inicial
-        testeLiberarRecursos.finish_date_test_methods = date_time_now()
-        testeLiberarRecursos.save()
+        # ---------- TESTE tempo para liberação dos recursos - tempo inicial
+        teste_liberar_recursos.finish_date_test_methods = date_time_now()
+        teste_liberar_recursos.save()
 
         return '', 204
         # return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
@@ -334,34 +334,42 @@ def main():
         payload = REQUEST_POST1
         undo = {}
         ok = create_laboratory_validade_json(payload)
-        if (ok):
+        if ok:
             True
         else:
             False
         try:
 
             # inicialização da coleta dos testes de tempo de criação
-            teste = Tests.create( #datetime.nowdate_time_now()
-                start_date_test = date_time_now(),
+            timing_tests = Tests.create(  # datetime.nowdate_time_now()
+                start_date_test=date_time_now(),
                 # start_date_test = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                description = DESCRIPTION_TEST
+                description=DESCRIPTION_TEST
             )
 
-            testeCriarUsuario = Tests_Methods.create(
-                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
-                fk_methods =  1
+            teste_criar_usuario = Tests_Methods.create(
+                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                fk_methods=1
             )
-            testeCriarProjeto = Tests_Methods.create(
-                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
-                fk_methods =  2
+            teste_criar_projeto = Tests_Methods.create(
+                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                fk_methods=2
             )
-            testeConfigurarRede = Tests_Methods.create(
-                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
-                fk_methods =  3
+            teste_configurar_rede = Tests_Methods.create(
+                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                fk_methods=3
             )
-            testeAlocarRecursos = Tests_Methods.create(
-                fk_tests = Tests.select().where(Tests.id_tests == teste.id_tests),
-                fk_methods =  4
+            teste_alocar_recursos = Tests_Methods.create(
+                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                fk_methods=4
+            )
+            teste_consumo_cpu = Tests_Methods.create(
+                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                fk_methods=6
+            )
+            teste_consumo_memoria = Tests_Methods.create(
+                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                fk_methods=7
             )
 
             user_name = 'renancs'  # recuperar o nome do FRONTEND
@@ -370,7 +378,7 @@ def main():
             user_from_bd = User.get_or_none(id_user=user_id)
             if user_from_bd is None:
                 user_from_bd = User.get_by_id(DEFAULT_USER)
-            
+
             user_id = user_from_bd.id_user
 
             laboratory_name = LABVER_PREFIX + payload['name']
@@ -399,9 +407,10 @@ def main():
                 instances=laboratory_instances,
                 creation_date=creation_date,
                 removal_date=removal_date,
-                fk_user=User.select().where(User.id_user == user_id),
-                fk_tests=teste.id_tests
+                fk_user=User.select().where(User.id_user == user_id)
             )
+
+            timing_tests.fk_laboratory = laboratory_to_bd.id_laboratory
 
             # print(laboratory_to_bd['id_laboratory'])
             undo['laboratory_to_bd'] = True  # laboratory_to_bd['id_laboratory']
@@ -409,8 +418,8 @@ def main():
 
             connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-# ---------- TESTE tempo de criação de um projeto - tempo inicial
-            testeCriarProjeto.start_date_test_methods = date_time_now()
+            # ---------- TESTE tempo de criação de um projeto - tempo inicial
+            teste_criar_projeto.start_date_test_methods = date_time_now()
 
             project = create_project(user_name, project_name, project_description, connection_openstack)
 
@@ -428,12 +437,12 @@ def main():
             undo['project_to_bd'] = project['id']
             print('project_to_bd')
 
-# ---------- TESTE tempo de criação de um projeto - tempo final
-            testeCriarProjeto.finish_date_test_methods = date_time_now()
+            # ---------- TESTE tempo de criação de um projeto - tempo final
+            teste_criar_projeto.finish_date_test_methods = date_time_now()
 
-# ---------- TESTE tempo de configuração de rede - tempo inicial
-            testeConfigurarRede.start_date_test_methods = date_time_now()
-            
+            # ---------- TESTE tempo de configuração de rede - tempo inicial
+            teste_configurar_rede.start_date_test_methods = date_time_now()
+
             network = create_network(network_name, project['id'], connection_openstack)
 
             undo['create_network_openstack'] = network['id']
@@ -470,13 +479,11 @@ def main():
 
             project_to_bd.save()
 
+            # ---------- TESTE tempo de configuração de rede - tempo final
+            teste_configurar_rede.finish_date_test_methods = date_time_now()
 
-# ---------- TESTE tempo de configuração de rede - tempo final
-            testeConfigurarRede.finish_date_test_methods = date_time_now()
-
-# ---------- TESTE tempo para Alocar recursos - tempo inicial
-            testeAlocarRecursos.start_date_test_methods = date_time_now()
-
+            # ---------- TESTE tempo para Alocar recursos - tempo inicial
+            teste_alocar_recursos.start_date_test_methods = date_time_now()
 
             id_do_lab = laboratory_to_bd.id_laboratory
 
@@ -528,7 +535,6 @@ def main():
             else:
                 laboratory_to_bd.status = 'scheduled'
 
-
             networkservice_to_bd = Networkservice.create(
                 id_networkservice=nsdId,
                 id_osm_nsd=nsdId,
@@ -542,16 +548,18 @@ def main():
 
             laboratory_to_bd.save()
 
-# ---------- TESTE tempo para Alocar recursos - tempo final
-            testeAlocarRecursos.finish_date_test_methods = date_time_now()
+            # ---------- TESTE tempo para Alocar recursos - tempo final
+            teste_alocar_recursos.finish_date_test_methods = date_time_now()
 
-            teste.save()
+            timing_tests.finish_date_test = date_time_now()
 
-            testeCriarUsuario.save()
-            testeCriarProjeto.save()
-            testeConfigurarRede.save()
-            testeAlocarRecursos.save()
-	
+            timing_tests.save()
+
+            teste_criar_usuario.save()
+            teste_criar_projeto.save()
+            teste_configurar_rede.save()
+            teste_alocar_recursos.save()
+
             return retorno, 201
 
         except Exception as error:
@@ -600,29 +608,92 @@ def main():
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
+        laboratory_id = 40
         cloud = 'openstack-serra'
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-        #Insert Session in Gnocchi object   
+        # Insert Session in Gnocchi object
         gnocchi = Gnocchi(session=connection_openstack.session)
 
-        resource_ids_nova=gnocchi.get_resource_id('nova_compute')
+        resource_ids_nova = gnocchi.get_resource_id('nova_compute')
         # return 'rota de teste'  # +str(vimAccountId)
-        print("RESOURCE ID--> ", resource_ids_nova)
+        # print("RESOURCE ID--> ", resource_ids_nova)
 
-        now=datetime.datetime.now().utcnow()
-        intervalo=60
-        delta = datetime.timedelta(seconds=intervalo)
-        time_past=now-delta
-        START=time_past
-        STOP=now
-        GRANULARITY=60
-        
-        resultado = gnocchi.get_last_measure("compute.node.cpu.idle.percent",resource_ids_nova,None,GRANULARITY,START,STOP)
+        queryTests = (Tests_Methods
+                      .select(Tests, Tests_Methods)
+                      .join(Tests)
+                      .where(Tests.fk_laboratory == laboratory_id)
+                      )
 
-        print(resultado)
-        return 'okok', resultado
+        print('queryTests', queryTests)
 
+        for test in queryTests:
+            # print('id test', test.id_tests_methods)
+            # print('start test', test.start_date_test_methods)
+            # print('end test', test.finish_date_test_methods)
+            if test.start_date_test_methods == 0:
+                print('vazio')
+            resultado = json.loads(gnocchi.get_measure_in_interval("compute.node.cpu.percent",
+                                                                   resource_ids_nova,
+                                                                   None,
+                                                                   60,
+                                                                   test.start_date_test_methods,
+                                                                   test.finish_date_test_methods))
+
+            print(resultado)
+            for registro in resultado:
+                print('--->', test.id_tests_methods, registro[0], registro[1], registro[2])
+                query = TestsMethodsData.create(id_tests_methods=test.id_tests_methods,
+                                                timestamp=registro[0],
+                                                granularity=registro[1],
+                                                metric_utilization=registro[2])
+
+        #     print('TESTESTESTES', resultado)
+        #
+        # print('queryTests', queryTests.dicts().get())
+        #
+        # testsResult = queryTests.dicts().get()
+        #
+        # now = datetime.datetime.now().utcnow()
+        # intervalo = 600
+        # delta = datetime.timedelta(seconds=intervalo)
+        # time_past = now - delta
+        # START = time_past
+        # STOP = now
+        # GRANULARITY = 60
+        #
+        # # resultado = gnocchi.get_last_measure("compute.node.cpu.idle.percent", resource_ids_nova, None, GRANULARITY,
+        # #                                      START, STOP)
+        # resultado = gnocchi.get_measure_in_interval("compute.node.cpu.percent", resource_ids_nova, None, GRANULARITY,
+        #                                             START, STOP)
+        # # resultado = gnocchi.get_metric_cpu_utilization(resource_ids_nova, GRANULARITY, 1, START, STOP)
+        # print('TESTESTESTES', resultado)
+        # res = json.loads(resultado)
+        # print('JSONLOADS', len(res))
+        #
+        # for registro in res:
+        #     query = TestsMethodsData.create(id_tests_methods=testsResult['id_tests_methods'],
+        #                                     timestamp=registro[0],
+        #                                     granularity=registro[1],
+        #                                     metric_utilization=registro[0])
+
+        # laboratory_to_bd = Laboratory.create(
+        #     name=laboratory_name,
+        #     classroom=laboratory_classroom,
+        #     description=laboratory_description,
+        #     instances=laboratory_instances,
+        #     fk_user=User.select().where(User.id_user == user_id)
+        # )
+
+        # querymany = query.insert_many(res, fields=[TestsMethodsData.timestamp,
+        #                                            TestsMethodsData.granularity,
+        #                                            TestsMethodsData.metric_utilization])
+
+        # print('query insert Many result', querymany)
+        # result = querymany.execute()
+        # print('insert Many result', result)
+        # print(resultado)
+        return 'resultado'
 
     @app.route('/createLaboratory/', methods=['POST', 'GET', 'DELETE'])
     def createLaboratory():

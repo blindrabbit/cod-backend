@@ -9,6 +9,7 @@ from database.connection_db import *
 db = create_connection_db('odb',
                           'root2', "root2", '10.50.1.122', 3306)
 
+
 class BaseModel(Model):
     class Meta:
         database = db
@@ -42,7 +43,7 @@ class User(BaseModel):
 
 class Laboratory(BaseModel):
     id_laboratory = BigIntegerField(primary_key=True, unique=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+                                    constraints=[SQL('AUTO_INCREMENT')])
     name = CharField(max_length=100)
     classroom = CharField(max_length=100)
     description = CharField(max_length=100)
@@ -51,8 +52,7 @@ class Laboratory(BaseModel):
     removal_date = DateTimeField(default=datetime.now)
     # fk_network_service = ForeignKeyField(Networkservice, backref='laboratory')
     fk_user = ForeignKeyField(User, backref='laboratories')
-    status = CharField(max_length=13) # scheduled/removed/instantiated
-    fk_tests = BigIntegerField( unique=True )
+    status = CharField(max_length=13)  # scheduled/removed/instantiated
 
     class Meta:
         table_name = 'laboratory'
@@ -73,14 +73,13 @@ class Project(BaseModel):
     openstack_id_router = CharField(max_length=100)
     osm_id_vim = CharField(max_length=100)
 
-
     class Meta:
         table_name = 'project'
 
 
 class Server(BaseModel):
     id_server = BigIntegerField(primary_key=True, unique=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+                                constraints=[SQL('AUTO_INCREMENT')])
     id_server_openstack = CharField(max_length=100, unique=True)
     name = CharField(max_length=100, unique=True)
     creation_date = DateField()
@@ -95,7 +94,7 @@ class Server(BaseModel):
 
 class Vnffgd(BaseModel):
     id_vnffgd = BigIntegerField(primary_key=True, unique=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+                                constraints=[SQL('AUTO_INCREMENT')])
     ip_proto = CharField(max_length=100)
     destination_port = CharField(max_length=100)
     source_port = CharField(max_length=100)
@@ -107,12 +106,13 @@ class Vnffgd(BaseModel):
 
 class Constituent_vnfd(BaseModel):
     id_constituent_vnfd = BigIntegerField(primary_key=True, unique=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+                                          constraints=[SQL('AUTO_INCREMENT')])
     id_constituent_vnfd = CharField(max_length=100)
     type = CharField(max_length=100)
     order = IntegerField()
     creation_date = DateTimeField(default=datetime.now)
     fk_user = ForeignKeyField(Server, db_column='id_server')
+
     # fk_networkservice = ForeignKeyField(Networkservice, db_column='id_networkservice')
 
     class Meta:
@@ -121,7 +121,7 @@ class Constituent_vnfd(BaseModel):
 
 class Networkservice(BaseModel):
     id_networkservice = IntegerField(primary_key=True, unique=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+                                     constraints=[SQL('AUTO_INCREMENT')])
     id_osm_ns_instance = CharField(max_length=100)
     id_osm_nsd = CharField(max_length=100)
     id_osm_vim = CharField(max_length=100)
@@ -135,8 +135,9 @@ class Networkservice(BaseModel):
 
 
 class Tests(BaseModel):
-    id_tests=BigIntegerField( unique=True, primary_key=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+    id_tests = BigIntegerField(unique=True, primary_key=True,
+                               constraints=[SQL('AUTO_INCREMENT')])
+    fk_laboratory = BigIntegerField(unique=True)
     start_date_test = DateTimeField()
     finish_date_test = DateTimeField()
     description = CharField(max_length=100)
@@ -144,17 +145,19 @@ class Tests(BaseModel):
     class Meta:
         table_name = 'tests'
 
+
 class Methods(BaseModel):
-    id_methods=BigIntegerField( unique=True, primary_key=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+    id_methods = BigIntegerField(unique=True, primary_key=True,
+                                 constraints=[SQL('AUTO_INCREMENT')])
     name_methods = CharField(max_length=100)
 
     class Meta:
         table_name = 'methods'
 
+
 class Tests_Methods(BaseModel):
-    id_tests_methods=BigIntegerField( unique=True, primary_key=True,
-            constraints=[SQL('AUTO_INCREMENT')])
+    id_tests_methods = BigIntegerField(unique=True, primary_key=True,
+                                       constraints=[SQL('AUTO_INCREMENT')])
     start_date_test_methods = DateTimeField()
     finish_date_test_methods = DateTimeField()
     fk_tests = ForeignKeyField(Tests, db_column='id_tests')
@@ -164,6 +167,17 @@ class Tests_Methods(BaseModel):
         table_name = 'tests_methods'
 
 
-db.create_tables([Services, User, Project, Server, Laboratory, Vnffgd, Constituent_vnfd, Networkservice, Tests, Methods, Tests_Methods])
+class TestsMethodsData(BaseModel):
+    id_tests_methods_data = BigIntegerField(unique=True, primary_key=True,
+                                            constraints=[SQL('AUTO_INCREMENT')])
+    timestamp = TimestampField()
+    granularity = FloatField()
+    metric_utilization = FloatField()
+    fk_tests_methods = ForeignKeyField(Tests_Methods, db_column='id_tests_methods')
+
+    class Meta:
+        table_name = 'tests_methods_data'
 
 
+db.create_tables([Services, User, Project, Server, Laboratory, Vnffgd, Constituent_vnfd, Networkservice, Tests, Methods,
+                  Tests_Methods, TestsMethodsData])
