@@ -606,7 +606,7 @@ def main():
         #Insert Session in Gnocchi object   
         gnocchi = Gnocchi(session=connection_openstack.session)
 
-        resource_ids_nova=gnocchi.get_resource('nova_compute')
+        resource_ids_nova=gnocchi.get_resource_id('nova_compute')
         # return 'rota de teste'  # +str(vimAccountId)
         print("RESOURCE ID--> ", resource_ids_nova)
 

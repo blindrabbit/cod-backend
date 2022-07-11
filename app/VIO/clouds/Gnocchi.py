@@ -48,8 +48,8 @@ class Gnocchi():
     def get_resource(self,name):
         try:
             resource=self.gnocchi_client.resource.search(resource_type=name,limit=1)
-            print (resource)
-            #return True
+            #print (resource)
+            return resource
         except ResourceTypeNotFound:
             return False
 
@@ -155,8 +155,9 @@ class Gnocchi():
         df4 = pd.DataFrame(df3)
         # print(df4.to_csv("teste.txt"))
 
-        print(str(name_metric)+"-"+str(resource_id)+"-"+ str(aggregation)+"-"+str(granularity)+"-"+str(start)+"-"+str(stop))
+        # print(str(name_metric)+"-"+str(resource_id)+"-"+ str(aggregation)+"-"+str(granularity)+"-"+str(start)+"-"+str(stop))
         dados=self.gnocchi_client.metric.get_measures(name_metric,start,stop, aggregation, granularity, resource_id)
+        print("DADOS ---> ",dados)
         df = pd.DataFrame(dados, columns =['timestamp', 'granularity', ''])
         print(df)
         if (df.__len__() == 0):
