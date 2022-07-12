@@ -173,6 +173,7 @@ class TestsMethodsData(BaseModel):
     timestamp = TimestampField()
     granularity = FloatField()
     metric_utilization = FloatField()
+    metric_type = CharField(max_length=100) # could by cpu or memory
     fk_tests_methods = ForeignKeyField(Tests_Methods, db_column='id_tests_methods')
 
     class Meta:

@@ -35,7 +35,7 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 #     },
 # }
 
-DESCRIPTION_TEST = '1VM/1VNF'
+DESCRIPTION_TEST = '1VM/0VNF'
 
 REQUEST_POST1 = {
     "name": "Teste8",
@@ -48,11 +48,16 @@ REQUEST_POST1 = {
     "creation_date": '1655773901',
     "removal_date": '1656034212',
     "networkfunctions": {
-        "vnf1": {
-            "image": "openwrt_vnfd",
-            "order": 1,
-            "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-        },
+        # "vnf1": {
+        #     "image": "openwrt_vnfd",
+        #     "order": 1,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
+        # "vnf2": {
+        #     "image": "openwrt_vnfd",
+        #     "order": 2,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
     },
 }
 

@@ -363,14 +363,14 @@ def main():
                 fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
                 fk_methods=4
             )
-            teste_consumo_cpu = Tests_Methods.create(
-                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-                fk_methods=6
-            )
-            teste_consumo_memoria = Tests_Methods.create(
-                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-                fk_methods=7
-            )
+            # teste_consumo_cpu = Tests_Methods.create(
+            #     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+            #     fk_methods=6
+            # )
+            # teste_consumo_memoria = Tests_Methods.create(
+            #     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+            #     fk_methods=7
+            # )
 
             user_name = 'renancs'  # recuperar o nome do FRONTEND
             user_id = '2'  # recuperar o ID do FRONTEND
@@ -608,7 +608,7 @@ def main():
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
-        laboratory_id = 40
+        laboratory_id = 48
         cloud = 'openstack-serra'
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
@@ -633,20 +633,37 @@ def main():
             # print('end test', test.finish_date_test_methods)
             if test.start_date_test_methods == 0:
                 print('vazio')
-            resultado = json.loads(gnocchi.get_measure_in_interval("compute.node.cpu.percent",
+
+            metrics_cpu = json.loads(gnocchi.get_measure_in_interval("compute.node.cpu.percent",
                                                                    resource_ids_nova,
                                                                    None,
                                                                    60,
                                                                    test.start_date_test_methods,
                                                                    test.finish_date_test_methods))
 
-            print(resultado)
-            for registro in resultado:
-                print('--->', test.id_tests_methods, registro[0], registro[1], registro[2])
+            # metrics_memory = json.loads(gnocchi.get_measure_in_interval("hardware.memory.used",
+            #                                                        resource_ids_nova,
+            #                                                        None,
+            #                                                        60,
+            #                                                        test.start_date_test_methods,
+            #                                                        test.finish_date_test_methods))
+
+            print(metrics_cpu)
+            for metric_cpu in metrics_cpu:
+                print('--->', test.id_tests_methods, metric_cpu[0], metric_cpu[1], metric_cpu[2])
                 query = TestsMethodsData.create(id_tests_methods=test.id_tests_methods,
-                                                timestamp=registro[0],
-                                                granularity=registro[1],
-                                                metric_utilization=registro[2])
+                                                timestamp=metric_cpu[0],
+                                                granularity=metric_cpu[1],
+                                                metric_utilization=metric_cpu[2],
+                                                metric_type='cpu')
+            # print(metrics_memory)
+            # for metric_memory in metrics_memory:
+            #     print('--->', test.id_tests_methods, metric_memory[0], metric_memory[1], metric_memory[2])
+            #     query = TestsMethodsData.create(id_tests_methods=test.id_tests_methods,
+            #                                     timestamp=metric_memory[0],
+            #                                     granularity=metric_memory[1],
+            #                                     metric_utilization=metric_memory[2],
+            #                                     metric_type='memory')
 
         #     print('TESTESTESTES', resultado)
         #
