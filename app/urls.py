@@ -42,7 +42,7 @@ REQUEST_POST1 = {
     "user_owner": "Teste8",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
-    "instances": 1,
+    "instances": 10,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
     "creation_date": '1655773901',
