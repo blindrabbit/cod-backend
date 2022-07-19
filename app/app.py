@@ -77,12 +77,12 @@ def main():
         def run_scheduler():
             print("Starting Thread to monitor laboratory schedules.")
             while True:
-                time.sleep(10)
+                time.sleep(60)
                 query = (Laboratory
                          .select()
                          .where((Laboratory.status == 'scheduled') |
                                 (Laboratory.status == 'instantiated'))
-                         )
+                        )
                 laboratories = {'removal': [], 'create': []}
 
                 # print(query.get_or_none())
@@ -131,10 +131,15 @@ def main():
                                     laboratories['removal'].append(dic)
 
                 print(laboratories)
-                time.sleep(20)
+                time.sleep(60)
 
         thread = threading.Thread(target=run_scheduler)
         thread.start()
+
+        def activate_data_colector():
+            def run_data_colector():
+                print('executa o agente')
+        print('execura o executor do agente nova thread')
 
     def create_laboratory_validade_json(json):
         if 'name' not in json:
@@ -284,7 +289,7 @@ def main():
                                      (Project.id_laboratory == laboratory_id)))
 
         laboratory = laboratory_from_bd.dicts().get()
-        print(laboratory)
+        # print(laboratory)
         tests_select = (Tests
                         .select()
                         .where(Tests.fk_laboratory == laboratory_id))
@@ -363,6 +368,9 @@ def main():
                 fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
                 fk_methods=4
             )
+
+            undo['create_tests'] = timing_tests.id_tests
+            print('create_tests')
             # teste_consumo_cpu = Tests_Methods.create(
             #     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
             #     fk_methods=6
@@ -565,14 +573,11 @@ def main():
         except Exception as error:
 
             if 'OSMNS_instantiate_ns' in undo:
-
                 print('apagar no OSM network service Instance')
                 OSMNS.delete_ns_instantiate(token, undo['OSMNS_instantiate_ns'])
-
             # undo['create_vim']=vimAccountId['id']
 
             else:
-
                 # undo['create_vim']=vimAccountId['id']
                 # undo['OSMNS.instantiate_ns']=nsdId_instance
 
@@ -582,7 +587,11 @@ def main():
 
                 if 'create_network_openstack' in undo:
                     print('apagar network')
-                    delete_network(undo['create_network_openstack'], connection_openstack)
+                    try:
+                        delete_network(undo['create_network_openstack'], connection_openstack)        
+                    except Exception as error:
+                        print('failed to remove network, trying to remove NS on OSM.')
+                        # OSMNS.delete_ns_instantiate(token, undo['OSMNS_instantiate_ns'])
 
                 if 'OSMNS_compose_ns' in undo:
                     print('apagar no OSM network service Descriptor')
@@ -600,11 +609,47 @@ def main():
                 print('apagar laboratorio no banco de dados')
                 laboratory_to_bd.delete_instance(recursive=True)
 
+            if 'create_tests' in undo:
+                print('apagar registro dos testes no bd')
+                tests_from_bd = (Tests
+                        .select()
+                        .join(Tests_Methods)
+                        .where(Tests.id_tests == undo['create_tests']))
+
+                tests_from_bd.get().delete_instance(recursive=True)
+
+
             return jsonify(error)
 
     @app.route('/testemodel')
     def testemodel():
-        return 'Vamos testar o modelo! -->'  # +str(vimAccountId)
+        
+        # try: 
+        #     print('try')
+        #     headers = {
+        #     'Content-Type': 'application/json',
+        #     'Accept': 'application/json'}
+
+        #     url = "http://10.50.0.161:5000/psutil"
+
+        #     payload = {
+        #     }
+
+        #     response = requests.request(
+        #         method="GET", url=url, headers=headers, json=payload, verify=False)
+
+        #     # json = response.json()
+        #     print('-------------------------------------')
+        #     print (response.text)
+
+        # except Exception as error:
+        #     print(error)
+        # response = OSMNS.get_compute_info()
+        response = is_testing_enable(1)
+        print(type(response))
+        var, var1 = response
+        print(var)
+        return str(var)  # +str(vimAccountId)
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
@@ -1455,7 +1500,7 @@ def main():
     # if __name__ == '__main__':
     #     app.run(debug=True)
     app.run(host='0.0.0.0', port=5000, debug=True)
-    # app.debug = True
+    app.debug = True
     # app.config["DEBUG"] = True
 
 

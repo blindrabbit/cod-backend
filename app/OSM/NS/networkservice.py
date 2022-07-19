@@ -1,8 +1,26 @@
+from itertools import count
+import time
+from flask import jsonify
 import requests
 # from sqlalchemy import false, null
 from urls import *
 from operator import itemgetter
 
+
+def get_compute_info():
+    try:
+        headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'}
+        url = "http://10.50.0.161:5000/psutil"
+        payload = {}
+        response = requests.request(
+            method="GET", url=url, headers=headers, json=payload, verify=False)
+
+    except Exception as error:
+        print(error)
+
+    return response  # +str(vimAccountId)
 
 def get_ns_resource(token, nsInstanceId):
 # /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource
@@ -108,7 +126,7 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId):
     # print('Before Instantiate +++++++++++++++++++++++++++++++++++++++++')
     # print(response.json())
     json = response.json()
-    print('---------------------------\n',json)
+    # print('---------------------------\n',json)
 
     method_osm = "/nslcm/v1/ns_instances/"+json['id']+"/instantiate/"
     url = url_osm+method_osm
@@ -134,9 +152,31 @@ def instantiate_ns(token, nsName, nsdId, vimAccountId):
 
     finished = False
     while finished == False:
+        time.sleep(1)
         response = requests.request(
             method="GET", url=url, headers=headers, verify=False)
         status = response.json()
+
+        try: 
+            try:
+                with open('helloworld.txt', 'a') as filehandle:
+                    filehandle.write('\n'+str(status)+'\n')
+            except Exception as error:
+                print(error)
+
+            log_nsState = status['nsState']
+            log_currentOperation = status['currentOperation']
+            log_operational_status = status['operational-status']
+            log_orchestration_progress = status['orchestration-progress']
+            log_config_status = status['config-status']
+            log_detailed_status = status['detailed-status']
+            print(log_nsState, log_currentOperation, log_operational_status,
+                  log_orchestration_progress, 
+                  log_config_status, log_detailed_status)       
+        except Exception as error:
+            print('-')
+
+        # print('\n\n\n\n STATUS DE CRIAÇÃO DO OSM',status)
         if status['nsState'] == 'READY':
             finished = True
 

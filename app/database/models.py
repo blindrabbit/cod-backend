@@ -4,6 +4,8 @@ from functools import partial
 from turtle import back
 from peewee import *
 from datetime import datetime
+
+from sqlalchemy import false
 from database.connection_db import *
 
 db = create_connection_db('odb',
@@ -20,6 +22,7 @@ class Services(BaseModel):
     name = CharField(max_length=100)
     token = CharField(max_length=100)
     creation_date = DateField()
+    test_mode = BooleanField(default=False)
 
     class Meta:
         table_name = 'service'
