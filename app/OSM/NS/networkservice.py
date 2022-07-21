@@ -20,7 +20,7 @@ def get_compute_info():
     except Exception as error:
         print(error)
 
-    return response  # +str(vimAccountId)
+    return response  # +str(vimAccountId) eita carai!
 
 def get_ns_resource(token, nsInstanceId):
 # /nslcm/v1/ns_instances/{nsInstanceId} Delete an individual NS instance resource

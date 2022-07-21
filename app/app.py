@@ -684,7 +684,7 @@ def main():
         cloud = 'openstack-serra'
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-        # Insert Session in Gnocchi object
+        # Insert Session in Gnocchi object não usa isso mais!
         gnocchi = Gnocchi(session=connection_openstack.session)
 
         resource_ids_nova = gnocchi.get_resource_id('nova_compute')
