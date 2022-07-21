@@ -688,7 +688,7 @@ def main():
         gnocchi = Gnocchi(session=connection_openstack.session)
 
         resource_ids_nova = gnocchi.get_resource_id('nova_compute')
-        # return 'rota de teste'  # +str(vimAccountId)
+        # return 'rota de teste'  # +str(vimAccountId) BLABLABLABLA
         # print("RESOURCE ID--> ", resource_ids_nova)
 
         queryTests = (Tests_Methods
