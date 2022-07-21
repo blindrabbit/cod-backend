@@ -9,6 +9,7 @@ import json
 import threading
 from xmlrpc.client import boolean
 from OSM.project.project_OSM import *
+from VIO.Tests import *
 # import bios
 # from requests.api import head
 from database.models import Services
@@ -58,6 +59,8 @@ requests.packages.urllib3.disable_warnings()
 
 def main():
     print("Iniciando Serviço")
+    if ENABLED_TEST:
+        toogle_testing(SERVICE_ID, True)
 
     app = Flask(__name__)
     CORS(app)
@@ -133,13 +136,22 @@ def main():
                 print(laboratories)
                 time.sleep(60)
 
-        thread = threading.Thread(target=run_scheduler)
-        thread.start()
+        def run_data_colector():
+            print('Inicializa o agente no compute Node')
+            response = OSMNS.get_compute_info()
+            print(response)
+        
 
-        def activate_data_colector():
-            def run_data_colector():
-                print('executa o agente')
-        print('execura o executor do agente nova thread')
+        thread_scheduler = threading.Thread(target=run_scheduler)
+        thread_scheduler.start()
+
+        if is_testing_enable:
+            thread_colector = threading.Thread(target=run_data_colector)
+            thread_colector.start()       
+            print('execura o executor do agente nova thread')
+
+    if is_testing_enable:
+        print('MODO DE COLETA DE DADOS ATIVADO - PARA DESATIVAR ALTERE O CAMPO ´test_mode´ na tabela Service para 0 (zero).')
 
     def create_laboratory_validade_json(json):
         if 'name' not in json:
@@ -338,47 +350,40 @@ def main():
         cloud = 'openstack-serra'
         payload = REQUEST_POST1
         undo = {}
-        ok = create_laboratory_validade_json(payload)
-        if ok:
+        # ok = 
+        if create_laboratory_validade_json(payload):
             True
         else:
             False
         try:
+            if is_testing_enable:
+                # inicialização da coleta dos testes de tempo de criação
+                timing_tests = Tests.create(  # datetime.nowdate_time_now()
+                    start_date_test=date_time_now(),
+                    # start_date_test = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                    description=DESCRIPTION_TEST)
 
-            # inicialização da coleta dos testes de tempo de criação
-            timing_tests = Tests.create(  # datetime.nowdate_time_now()
-                start_date_test=date_time_now(),
-                # start_date_test = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                description=DESCRIPTION_TEST
-            )
+                teste_criar_usuario = Tests_Methods.create(
+                    fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                    fk_methods=1)
+                teste_criar_projeto = Tests_Methods.create(
+                    fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                    fk_methods=2)
+                teste_configurar_rede = Tests_Methods.create(
+                    fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                    fk_methods=3)
+                teste_alocar_recursos = Tests_Methods.create(
+                    fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                    fk_methods=4)
 
-            teste_criar_usuario = Tests_Methods.create(
-                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-                fk_methods=1
-            )
-            teste_criar_projeto = Tests_Methods.create(
-                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-                fk_methods=2
-            )
-            teste_configurar_rede = Tests_Methods.create(
-                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-                fk_methods=3
-            )
-            teste_alocar_recursos = Tests_Methods.create(
-                fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-                fk_methods=4
-            )
-
-            undo['create_tests'] = timing_tests.id_tests
-            print('create_tests')
-            # teste_consumo_cpu = Tests_Methods.create(
-            #     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-            #     fk_methods=6
-            # )
-            # teste_consumo_memoria = Tests_Methods.create(
-            #     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
-            #     fk_methods=7
-            # )
+                undo['create_tests'] = timing_tests.id_tests
+                print('create_tests')
+                # teste_consumo_cpu = Tests_Methods.create(
+                #     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                #     fk_methods=6)
+                # teste_consumo_memoria = Tests_Methods.create(
+                #     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
+                #     fk_methods=7)
 
             user_name = 'renancs'  # recuperar o nome do FRONTEND
             user_id = '2'  # recuperar o ID do FRONTEND
@@ -426,8 +431,10 @@ def main():
 
             connection_openstack = create_connection_openstack_clouds_file(cloud)
 
-            # ---------- TESTE tempo de criação de um projeto - tempo inicial
-            teste_criar_projeto.start_date_test_methods = date_time_now()
+
+            if is_testing_enable:
+                # ---------- TESTE tempo de criação de um projeto - tempo inicial
+                teste_criar_projeto.start_date_test_methods = date_time_now()
 
             project = create_project(user_name, project_name, project_description, connection_openstack)
 
@@ -445,11 +452,13 @@ def main():
             undo['project_to_bd'] = project['id']
             print('project_to_bd')
 
-            # ---------- TESTE tempo de criação de um projeto - tempo final
-            teste_criar_projeto.finish_date_test_methods = date_time_now()
 
-            # ---------- TESTE tempo de configuração de rede - tempo inicial
-            teste_configurar_rede.start_date_test_methods = date_time_now()
+            if is_testing_enable:
+                # ---------- TESTE tempo de criação de um projeto - tempo final
+                teste_criar_projeto.finish_date_test_methods = date_time_now()
+
+                # ---------- TESTE tempo de configuração de rede - tempo inicial
+                teste_configurar_rede.start_date_test_methods = date_time_now()
 
             network = create_network(network_name, project['id'], connection_openstack)
 
@@ -487,11 +496,12 @@ def main():
 
             project_to_bd.save()
 
-            # ---------- TESTE tempo de configuração de rede - tempo final
-            teste_configurar_rede.finish_date_test_methods = date_time_now()
+            if is_testing_enable:
+                # ---------- TESTE tempo de configuração de rede - tempo final
+                teste_configurar_rede.finish_date_test_methods = date_time_now()
 
-            # ---------- TESTE tempo para Alocar recursos - tempo inicial
-            teste_alocar_recursos.start_date_test_methods = date_time_now()
+                # ---------- TESTE tempo para Alocar recursos - tempo inicial
+                teste_alocar_recursos.start_date_test_methods = date_time_now()
 
             id_do_lab = laboratory_to_bd.id_laboratory
 
@@ -556,17 +566,21 @@ def main():
 
             laboratory_to_bd.save()
 
-            # ---------- TESTE tempo para Alocar recursos - tempo final
-            teste_alocar_recursos.finish_date_test_methods = date_time_now()
 
-            timing_tests.finish_date_test = date_time_now()
+            if is_testing_enable:
+                # ---------- TESTE tempo para Alocar recursos - tempo final
+                teste_alocar_recursos.finish_date_test_methods = date_time_now()
 
-            timing_tests.save()
+                timing_tests.finish_date_test = date_time_now()
 
-            teste_criar_usuario.save()
-            teste_criar_projeto.save()
-            teste_configurar_rede.save()
-            teste_alocar_recursos.save()
+                timing_tests.save()
+
+                teste_criar_usuario.save()
+                teste_criar_projeto.save()
+                teste_configurar_rede.save()
+                teste_alocar_recursos.save()
+                
+                toogle_testing(SERVICE_ID, False)
 
             return retorno, 201
 
@@ -618,12 +632,25 @@ def main():
 
                 tests_from_bd.get().delete_instance(recursive=True)
 
+            return (error)
 
-            return jsonify(error)
 
     @app.route('/testemodel')
     def testemodel():
-        
+        if ENABLED_TEST:
+            try:
+                service = (Services
+                                        .select()
+                                        .where(Services.id_service == SERVICE_ID).get())
+                service.test_mode = 0
+                service.save()
+                return "True"
+                
+            except Exception as error:
+                print("error", error)
+                return "False"
+
+        return "eu heim"
         # try: 
         #     print('try')
         #     headers = {
@@ -643,13 +670,13 @@ def main():
         #     print (response.text)
 
         # except Exception as error:
-        #     print(error)
+        # #     print(error)
         # response = OSMNS.get_compute_info()
-        response = is_testing_enable(1)
-        print(type(response))
-        var, var1 = response
-        print(var)
-        return str(var)  # +str(vimAccountId)
+        # # response = is_testing_enable(1)
+        # print(type(response))
+        # var, var1 = response
+        # print(var)
+        # return str(var)  # +str(vimAccountId)
 
     @app.route('/teste/', methods=['POST', 'GET', 'DELETE'])
     def teste():
@@ -694,13 +721,13 @@ def main():
             #                                                        test.finish_date_test_methods))
 
             print(metrics_cpu)
-            for metric_cpu in metrics_cpu:
-                print('--->', test.id_tests_methods, metric_cpu[0], metric_cpu[1], metric_cpu[2])
-                query = TestsMethodsData.create(id_tests_methods=test.id_tests_methods,
-                                                timestamp=metric_cpu[0],
-                                                granularity=metric_cpu[1],
-                                                metric_utilization=metric_cpu[2],
-                                                metric_type='cpu')
+            # for metric_cpu in metrics_cpu:
+            #     print('--->', test.id_tests_methods, metric_cpu[0], metric_cpu[1], metric_cpu[2])
+            #     query = TestsMethodsData.create(id_tests_methods=test.id_tests_methods,
+            #                                     timestamp=metric_cpu[0],
+            #                                     granularity=metric_cpu[1],
+            #                                     metric_utilization=metric_cpu[2],
+            #                                     metric_type='cpu')
             # print(metrics_memory)
             # for metric_memory in metrics_memory:
             #     print('--->', test.id_tests_methods, metric_memory[0], metric_memory[1], metric_memory[2])

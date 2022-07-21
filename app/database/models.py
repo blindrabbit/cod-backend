@@ -183,5 +183,14 @@ class TestsMethodsData(BaseModel):
         table_name = 'tests_methods_data'
 
 
+class ComputeNodeData(BaseModel):
+    id_compute_node_data = AutoField(primary_key=True)
+    compute_node_data_date = DateTimeField()
+    compute_node_data_cpu_percent = FloatField()
+    compute_node_data_memory_percent = FloatField()
+    
+    class Meta:
+        table_name = 'computenodedata'
+
 db.create_tables([Services, User, Project, Server, Laboratory, Vnffgd, Constituent_vnfd, Networkservice, Tests, Methods,
                   Tests_Methods, TestsMethodsData])

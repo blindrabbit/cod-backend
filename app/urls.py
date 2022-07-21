@@ -35,6 +35,9 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 #     },
 # }
 
+ENABLED_TEST = True
+SERVICE_ID = 1
+
 DESCRIPTION_TEST = '5VM/2VNF'
 
 REQUEST_POST1 = {

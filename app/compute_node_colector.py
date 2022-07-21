@@ -33,7 +33,6 @@
 #  python3 -m venv venv
 #  source venv/bin/activate
 #  flask run --host 0.0.0.0
-
 from flask import Flask
 import psutil as ps
 import mysql.connector
@@ -117,7 +116,7 @@ def psutil():
     while is_testing:
         is_testing = is_testing_enable()
 
-        cpu_percent = ps.cpu_percent(interval=1)
+        cpu_percent = ps.cpu_percent(interval=1.0)
     #    data = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         memory_percent = round(100 -(ps.virtual_memory().available * 100 / ps.virtual_memory().total),2)
@@ -125,10 +124,10 @@ def psutil():
         
         retorno = "{'datetime':"+ data +", 'cpu_percent': "+ str(cpu_percent) +", 'memory_percent': "+ str(memory_percent) +"}"
         
-        print(data)
+        print(retorno)
         query = ComputeNodeData.create(compute_node_data_date=data,
-                                        compute_node_data_cpu_percent=cpu_percent,
-                                        compute_node_data_memory_percent=memory_percent)
+                                       compute_node_data_cpu_percent=cpu_percent,
+                                       compute_node_data_memory_percent=memory_percent)
                                     
 #    retorno = 'teste'
 
