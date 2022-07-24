@@ -236,11 +236,11 @@ def main():
         amostras = 1
         cenarios = [
                     {'vm':1,'vnf':0},
-                    # {'vm':1,'vnf':1},
-                    # {'vm':1,'vnf':2},
-                    # {'vm':1,'vnf':3},
-                    # {'vm':1,'vnf':4},
-                    # {'vm':1,'vnf':5},
+                    {'vm':1,'vnf':1},
+                    {'vm':1,'vnf':2},
+                    {'vm':1,'vnf':3},
+                    {'vm':1,'vnf':4},
+                    {'vm':1,'vnf':5},
                     # {'vm':1,'vnf':6},
                     # {'vm':1,'vnf':7},
                     # {'vm':1,'vnf':8},                    
@@ -427,7 +427,7 @@ def main():
                 
                 vms = str(REQUEST_POST1['instances'])
                 vnfs = str(len(REQUEST_POST1['networkfunctions']))
-                teste_description = vms+'VM-'+vnfs+'VNF111111'
+                teste_description = vms+'VM-'+vnfs+'VNF'
                 timing_tests = Tests.create(  # datetime.nowdate_time_now()
                     start_date_test=date_time_now(),
                     # start_date_test = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
