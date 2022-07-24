@@ -4,6 +4,10 @@
 # $env:OS_CLIENT_CONFIG_FILE="clouds.yaml"
 # PS C:\Users\1918648\Documents\GitHub\cod-backend> .\env\Scripts\Activate
 # (env) PS C:\Users\1918648\Documents\GitHub\cod-backend> $env:OS_CLIENT_CONFIG_FILE="./app/clouds.yaml"
+
+
+# GRAFICOS DE TEMPO DOS METODOS
+#https://colab.research.google.com/drive/1uUaeUg1OnDusHFeMTFl8gGDkMXw3FVi_#scrollTo=hblmjgL8ECQ3
 from ipaddress import ip_address
 import json
 import threading
@@ -59,8 +63,8 @@ requests.packages.urllib3.disable_warnings()
 
 def main():
     print("Iniciando Serviço")
-    if ENABLED_TEST:
-        toogle_testing(SERVICE_ID, True)
+    # if ENABLED_TEST:
+        # toogle_testing(SERVICE_ID, True)
 
     app = Flask(__name__)
     CORS(app)
@@ -138,6 +142,7 @@ def main():
 
         def run_data_colector():
             print('Inicializa o agente no compute Node')
+            
             response = OSMNS.get_compute_info()
             print(response)
         
@@ -289,6 +294,9 @@ def main():
     def delete_laboratory(laboratory_id):
         cloud = 'openstack-serra'
 
+        if is_testing_enable:
+            toogle_testing(SERVICE_ID, True)
+
         connection_openstack = create_connection_openstack_clouds_file(cloud)
 
         laboratory_from_bd = (Laboratory
@@ -338,9 +346,12 @@ def main():
 
             laboratory_from_bd.get().delete_instance(recursive=True)
 
-        # ---------- TESTE tempo para liberação dos recursos - tempo inicial
-        teste_liberar_recursos.finish_date_test_methods = date_time_now()
-        teste_liberar_recursos.save()
+
+        if is_testing_enable:
+            # ---------- TESTE tempo para liberação dos recursos - tempo inicial
+            teste_liberar_recursos.finish_date_test_methods = date_time_now()
+            teste_liberar_recursos.save()
+            toogle_testing(SERVICE_ID, False)
 
         return '', 204
         # return "<a href='/create_laboratory'>Criar novo laboratorio</a>"
@@ -631,24 +642,83 @@ def main():
                         .where(Tests.id_tests == undo['create_tests']))
 
                 tests_from_bd.get().delete_instance(recursive=True)
-
+                toogle_testing(SERVICE_ID, False)
+            print('----------------------------------\n', error)
             return (error)
+
+    @app.route('/testecenarios')
+    def testecenarios():
+        amostras = 5
+        cenarios = [
+                    {'vm':1,'vnf':0},
+                    {'vm':1,'vnf':1},
+                    {'vm':1,'vnf':2},
+                    {'vm':1,'vnf':3},
+                    {'vm':1,'vnf':4},
+                    {'vm':1,'vnf':5},
+                    # {'vm':1,'vnf':6},
+                    # {'vm':1,'vnf':7},
+                    # {'vm':1,'vnf':8},                    
+                    # {'vm':1,'vnf':9},                    
+                    # {'vm':1,'vnf':10},
+        ]
+
+        print('Inicio da coleta de dados para os testes, serão coletados dados para os seguintes cenários:')
+        print(cenarios)
+
+        for cenario in cenarios:
+            DESCRIPTION_TEST = str(cenario['vm'])+'VM-'+str(cenario['vnf'])+'VNF'
+            REQUEST_POST1['instances'] = cenario['vm']
+            REQUEST_POST1['name'] = 'CENARIO_'+DESCRIPTION_TEST
+            REQUEST_POST1['networkfunctions'] = {}
+
+            print('montagem dos dados para o seguinte cenário: '+DESCRIPTION_TEST)
+            if cenario['vnf'] > 0 :
+                for vnf in range(cenario['vnf']):
+                    REQUEST_POST1['networkfunctions']['vnf'+str(vnf)] = {
+                        "image": "openwrt_vnfd",
+                        "order": vnf,
+                        "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+                    }
+
+            for item in range(amostras):
+                toogle_testing(SERVICE_ID, True)
+                create_laboratory()
+
+                timer = 0
+                while True:
+                    lab = Laboratory.get_or_none(Laboratory.select())               
+                    if lab is None:
+                        break
+                    if timer == 5:
+                        print('Aguardando o laboratorio de ID '+str(lab)+' ser apagado...')
+                        timer = 0
+                    time.sleep(1)
+                    timer = timer + 1
+
+        return 'Testes realizados com sucesso.'
 
 
     @app.route('/testemodel')
     def testemodel():
-        if ENABLED_TEST:
-            try:
-                service = (Services
-                                        .select()
-                                        .where(Services.id_service == SERVICE_ID).get())
-                service.test_mode = 0
-                service.save()
-                return "True"
+
+        if REQUEST_POST1['networkfunctions']:
+            print(True)
+        else:
+            print(REQUEST_POST1['networkfunctions'])
+
+        # if ENABLED_TEST ==100:
+        #     try:
+        #         service = (Services
+        #                                 .select()
+        #                                 .where(Services.id_service == SERVICE_ID).get())
+        #         service.test_mode = 0
+        #         service.save()
+        #         return "True"
                 
-            except Exception as error:
-                print("error", error)
-                return "False"
+        #     except Exception as error:
+        #         print("error", error)
+        #         return "False"
 
         return "eu heim"
         # try: 

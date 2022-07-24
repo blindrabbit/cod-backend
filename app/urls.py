@@ -38,29 +38,29 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 ENABLED_TEST = True
 SERVICE_ID = 1
 
-DESCRIPTION_TEST = '5VM/2VNF'
+DESCRIPTION_TEST = '1VM-0VNF'
 
 REQUEST_POST1 = {
     "name": "Teste9",
     "user_owner": "Teste9",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
-    "instances": 5,
+    "instances": 1,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
     "creation_date": '1655773901',
     "removal_date": '1656034212',
     "networkfunctions": {
-        "vnf1": {
-            "image": "openwrt_vnfd",
-            "order": 1,
-            "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-        },
-        "vnf2": {
-            "image": "openwrt_vnfd",
-            "order": 2,
-            "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-        },
+        # "vnf1": {
+        #     "image": "openwrt_vnfd",
+        #     "order": 1,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
+        # "vnf2": {
+        #     "image": "openwrt_vnfd",
+        #     "order": 2,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
     },
 }
 

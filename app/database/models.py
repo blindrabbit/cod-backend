@@ -140,7 +140,7 @@ class Networkservice(BaseModel):
 class Tests(BaseModel):
     id_tests = BigIntegerField(unique=True, primary_key=True,
                                constraints=[SQL('AUTO_INCREMENT')])
-    fk_laboratory = BigIntegerField(unique=True)
+    fk_laboratory = BigIntegerField()
     start_date_test = DateTimeField()
     finish_date_test = DateTimeField()
     description = CharField(max_length=100)

@@ -1,38 +1,3 @@
-#Usado no COMPUTE node com as seguintes depedencias e configurações:
-# (venv) [renancs@openstack-serra-compute01 psutil_monitor]$ pip freeze
-# aiocontextvars==0.2.2
-# certifi==2022.6.15
-# charset-normalizer==2.0.12
-# clask==0.0.5
-# click==8.0.4
-# contextvars==2.4
-# databases==0.5.5
-# dataclasses==0.8
-# Flask==2.0.3
-# greenlet==1.1.2
-# idna==3.3
-# immutables==0.18
-# importlib-metadata==4.8.3
-# itsdangerous==2.0.1
-# Jinja2==3.0.3
-# MarkupSafe==2.0.1
-# mysql-connector==2.2.9
-# peewee==3.15.1
-# psutil==5.9.1
-# PyMySQL==1.0.2
-# requests==2.27.1
-# SQLAlchemy==1.4.39
-# typing_extensions==4.1.1
-# urllib3==1.26.10
-# Werkzeug==2.0.3
-# zipp==3.6.0
-
-#criar arquivo requeiriments.txt com os requisitos a cima, e carregar com "pip -r requeiriments.txt"
-
-#para executar
-#  python3 -m venv venv
-#  source venv/bin/activate
-#  flask run --host 0.0.0.0
 from flask import Flask
 import psutil as ps
 import mysql.connector
@@ -41,6 +6,7 @@ import peewee as pw
 from peewee import *
 from datetime import datetime
 import requests
+import time
 
 app = Flask(__name__)
 
@@ -87,9 +53,12 @@ def is_testing_enable():
                                 .select()
                                 .where(Services.id_service == service_id))
         var = is_testing.dicts().get()
+        #print(var)
         if var['test_mode']:
+            #print("Teste habilitado.")
             return True
         else:
+            #print("Teste desabilitado.")
             return False
 
     except Exception as error:
@@ -112,23 +81,27 @@ def hello():
 @app.route('/psutil')
 def psutil():
     is_testing = True
+    interval = 1.0
     
-    while is_testing:
+    while True:
         is_testing = is_testing_enable()
-
-        cpu_percent = ps.cpu_percent(interval=1.0)
-    #    data = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        
         data = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        memory_percent = round(100 -(ps.virtual_memory().available * 100 / ps.virtual_memory().total),2)
-    #    retorno = (data+ ' - cpu '+str(cpu_percent)+'% | memory '+ str(memory_percent) +'%')
-        
-        retorno = "{'datetime':"+ data +", 'cpu_percent': "+ str(cpu_percent) +", 'memory_percent': "+ str(memory_percent) +"}"
-        
-        print(retorno)
-        query = ComputeNodeData.create(compute_node_data_date=data,
-                                       compute_node_data_cpu_percent=cpu_percent,
-                                       compute_node_data_memory_percent=memory_percent)
-                                    
+        if is_testing_enable():
+            cpu_percent = ps.cpu_percent(interval=interval)
+        #    data = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            memory_percent = round(100 -(ps.virtual_memory().available * 100 / ps.virtual_memory().total),2)
+        #    retorno = (data+ ' - cpu '+str(cpu_percent)+'% | memory '+ str(memory_percent) +'%')
+            
+            retorno = "{'datetime':"+ data +", 'cpu_percent': "+ str(cpu_percent) +", 'memory_percent': "+ str(memory_percent) +"}"
+            
+            print(retorno)
+            query = ComputeNodeData.create(compute_node_data_date=data,
+                                           compute_node_data_cpu_percent=cpu_percent,
+                                           compute_node_data_memory_percent=memory_percent)
+        else:
+            print("{'datetime':"+ data +"}")            
+            time.sleep(interval)
 #    retorno = 'teste'
 
     return retorno

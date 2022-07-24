@@ -329,12 +329,13 @@ def create_nsd(nsd_name, cidr, json):
         vnfd_connection_point_ref["ip-address"]=cidr.replace('.0/24', '.'+str(10+x))
         vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
 
-    for vnf in payload["networkfunctions"]:
-        vnfd_connection_point_ref={}
-        vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
-        vnfd_connection_point_ref["vnfd-id-ref"]=payload["networkfunctions"][vnf]["image"]    
-        vnfd_connection_point_ref["member-vnf-index-ref"]=100+payload["networkfunctions"][vnf]["order"]
-        vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
+    if payload["networkfunctions"]:
+        for vnf in payload["networkfunctions"]:
+            vnfd_connection_point_ref={}
+            vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
+            vnfd_connection_point_ref["vnfd-id-ref"]=payload["networkfunctions"][vnf]["image"]    
+            vnfd_connection_point_ref["member-vnf-index-ref"]=100+payload["networkfunctions"][vnf]["order"]
+            vld["vnfd-connection-point-ref"].append(vnfd_connection_point_ref)
 
     # vnfd_connection_point_ref={}
     # vnfd_connection_point_ref["vnfd-connection-point-ref"]="vnf-data"
@@ -382,11 +383,12 @@ def create_nsd(nsd_name, cidr, json):
         cvnfd["vnfd-id-ref"]=payload["image"]
         constituent_vnfd.append(cvnfd)
 
-    for vnf in payload["networkfunctions"]:
-        cvnfd={}
-        cvnfd["member-vnf-index"]=100+payload["networkfunctions"][vnf]["order"]
-        cvnfd["vnfd-id-ref"]=payload["networkfunctions"][vnf]["image"]
-        constituent_vnfd.append(cvnfd)
+    if payload["networkfunctions"]:
+        for vnf in payload["networkfunctions"]:
+            cvnfd={}
+            cvnfd["member-vnf-index"]=100+payload["networkfunctions"][vnf]["order"]
+            cvnfd["vnfd-id-ref"]=payload["networkfunctions"][vnf]["image"]
+            constituent_vnfd.append(cvnfd)
 
     nsd["ip-profiles"]=[]
     nsd["ip-profiles"].append(ip_profiles)
@@ -395,11 +397,11 @@ def create_nsd(nsd_name, cidr, json):
     # nsd["constituent_vnfd"].append()
 
     #DESABILITANDO A UTILIZAÇÃO DO SFC NESTE MOMENTO
+    if payload["networkfunctions"]:
+        vnffgd = create_vnffgd(payload["networkfunctions"], cidr)
 
-    vnffgd = create_vnffgd(payload["networkfunctions"], cidr)
-
-    nsd["vnffgd"]=[]
-    nsd["vnffgd"].append(vnffgd)
+        nsd["vnffgd"]=[]
+        nsd["vnffgd"].append(vnffgd)
 
     d['nsd:nsd-catalog']["nsd"]=[]
     d['nsd:nsd-catalog']["nsd"].append(nsd)

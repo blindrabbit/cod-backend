@@ -9,8 +9,10 @@ def toogle_testing(service_id, switch=False):
                     .where(Services.id_service == service_id).get())
         if switch:
             service.test_mode = 1
+            print('Coleta de dados no COMPUTE ativada.')
         else:
             service.test_mode = 0
+            print('Coleta de dados no COMPUTE desativada.')
         service.save()
         return True
 
