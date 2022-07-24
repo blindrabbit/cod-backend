@@ -38,7 +38,8 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 ENABLED_TEST = True
 SERVICE_ID = 1
 
-DESCRIPTION_TEST = '1VM-0VNF'
+global DESCRIPTION_TEST
+DESCRIPTION_TEST = '000-0000'
 
 REQUEST_POST1 = {
     "name": "Teste9",

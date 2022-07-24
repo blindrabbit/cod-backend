@@ -229,6 +229,61 @@ def main():
                 print("error", error)
                 return 'erro não tratado.', 400
 
+
+
+    @app.route('/testecenarios')
+    def testecenarios():
+        amostras = 1
+        cenarios = [
+                    {'vm':1,'vnf':0},
+                    # {'vm':1,'vnf':1},
+                    # {'vm':1,'vnf':2},
+                    # {'vm':1,'vnf':3},
+                    # {'vm':1,'vnf':4},
+                    # {'vm':1,'vnf':5},
+                    # {'vm':1,'vnf':6},
+                    # {'vm':1,'vnf':7},
+                    # {'vm':1,'vnf':8},                    
+                    # {'vm':1,'vnf':9},                    
+                    # {'vm':1,'vnf':10},
+        ]
+
+        print('Inicio da coleta de dados para os testes, serão coletados dados para os seguintes cenários:')
+        print(cenarios)
+
+        for cenario in cenarios:
+            description = str(cenario['vm'])+'VM-'+str(cenario['vnf'])+'VNF'
+            REQUEST_POST1['instances'] = cenario['vm']
+            REQUEST_POST1['name'] = 'CENARIO_'+description
+            REQUEST_POST1['networkfunctions'] = {}
+            DESCRIPTION_TEST = description
+            print('montagem dos dados para o seguinte cenário: '+description)
+            if cenario['vnf'] > 0 :
+                for vnf in range(cenario['vnf']):
+                    REQUEST_POST1['networkfunctions']['vnf'+str(vnf)] = {
+                        "image": "openwrt_vnfd",
+                        "order": vnf,
+                        "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+                    }
+
+            for item in range(amostras):
+                toogle_testing(SERVICE_ID, True)
+                create_laboratory()
+
+                timer = 0
+                while True:
+                    lab = Laboratory.get_or_none(Laboratory.select())               
+                    if lab is None:
+                        break
+                    if timer == 5:
+                        print('Aguardando o laboratorio de ID '+str(lab)+' ser apagado...')
+                        timer = 0
+                    time.sleep(1)
+                    timer = timer + 1
+
+        return 'Testes realizados com sucesso.'
+
+
     @app.route('/beta/create_laboratory', methods=['POST', 'GET'])
     def beta_create_laboratory():
         # print(request)
@@ -369,10 +424,14 @@ def main():
         try:
             if is_testing_enable:
                 # inicialização da coleta dos testes de tempo de criação
+                
+                vms = str(REQUEST_POST1['instances'])
+                vnfs = str(len(REQUEST_POST1['networkfunctions']))
+                teste_description = vms+'VM-'+vnfs+'VNF111111'
                 timing_tests = Tests.create(  # datetime.nowdate_time_now()
                     start_date_test=date_time_now(),
                     # start_date_test = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
-                    description=DESCRIPTION_TEST)
+                    description=teste_description)
 
                 teste_criar_usuario = Tests_Methods.create(
                     fk_tests=Tests.select().where(Tests.id_tests == timing_tests.id_tests),
@@ -646,62 +705,14 @@ def main():
             print('----------------------------------\n', error)
             return (error)
 
-    @app.route('/testecenarios')
-    def testecenarios():
-        amostras = 5
-        cenarios = [
-                    {'vm':1,'vnf':0},
-                    {'vm':1,'vnf':1},
-                    {'vm':1,'vnf':2},
-                    {'vm':1,'vnf':3},
-                    {'vm':1,'vnf':4},
-                    {'vm':1,'vnf':5},
-                    # {'vm':1,'vnf':6},
-                    # {'vm':1,'vnf':7},
-                    # {'vm':1,'vnf':8},                    
-                    # {'vm':1,'vnf':9},                    
-                    # {'vm':1,'vnf':10},
-        ]
-
-        print('Inicio da coleta de dados para os testes, serão coletados dados para os seguintes cenários:')
-        print(cenarios)
-
-        for cenario in cenarios:
-            DESCRIPTION_TEST = str(cenario['vm'])+'VM-'+str(cenario['vnf'])+'VNF'
-            REQUEST_POST1['instances'] = cenario['vm']
-            REQUEST_POST1['name'] = 'CENARIO_'+DESCRIPTION_TEST
-            REQUEST_POST1['networkfunctions'] = {}
-
-            print('montagem dos dados para o seguinte cenário: '+DESCRIPTION_TEST)
-            if cenario['vnf'] > 0 :
-                for vnf in range(cenario['vnf']):
-                    REQUEST_POST1['networkfunctions']['vnf'+str(vnf)] = {
-                        "image": "openwrt_vnfd",
-                        "order": vnf,
-                        "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-                    }
-
-            for item in range(amostras):
-                toogle_testing(SERVICE_ID, True)
-                create_laboratory()
-
-                timer = 0
-                while True:
-                    lab = Laboratory.get_or_none(Laboratory.select())               
-                    if lab is None:
-                        break
-                    if timer == 5:
-                        print('Aguardando o laboratorio de ID '+str(lab)+' ser apagado...')
-                        timer = 0
-                    time.sleep(1)
-                    timer = timer + 1
-
-        return 'Testes realizados com sucesso.'
-
-
     @app.route('/testemodel')
     def testemodel():
 
+        # str(cenario['vm'])+'VM-'+str(cenario['vnf'])+'VNF'
+        vms = str(REQUEST_POST1['instances'])
+        vnfs = str(len(REQUEST_POST1['networkfunctions']))
+        teste_description = vms+'VM-'+vnfs+'VNF'
+        print(teste_description)
         if REQUEST_POST1['networkfunctions']:
             print(True)
         else:
