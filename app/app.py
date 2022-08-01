@@ -233,19 +233,19 @@ def main():
 
     @app.route('/testecenarios')
     def testecenarios():
-        amostras = 1
+        amostras = 5
         cenarios = [
-                    {'vm':1,'vnf':0},
                     {'vm':1,'vnf':1},
-                    {'vm':1,'vnf':2},
-                    {'vm':1,'vnf':3},
-                    {'vm':1,'vnf':4},
-                    {'vm':1,'vnf':5},
-                    # {'vm':1,'vnf':6},
-                    # {'vm':1,'vnf':7},
-                    # {'vm':1,'vnf':8},                    
-                    # {'vm':1,'vnf':9},                    
-                    # {'vm':1,'vnf':10},
+                    {'vm':2,'vnf':2},
+                    {'vm':3,'vnf':3},
+                    {'vm':4,'vnf':4},
+                    {'vm':5,'vnf':5},
+                    {'vm':6,'vnf':6},
+                    {'vm':7,'vnf':7},
+                    {'vm':8,'vnf':8},
+                    {'vm':9,'vnf':9},
+                    {'vm':10,'vnf':10},
+                    # {'vm':1,'vnf':1},
         ]
 
         print('Inicio da coleta de dados para os testes, serão coletados dados para os seguintes cenários:')
@@ -272,7 +272,7 @@ def main():
 
                 timer = 0
                 while True:
-                    lab = Laboratory.get_or_none(Laboratory.select())               
+                    lab = Laboratory.get_or_none(Laboratory.select())
                     if lab is None:
                         break
                     if timer == 5:
