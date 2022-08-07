@@ -42,21 +42,21 @@ global DESCRIPTION_TEST
 DESCRIPTION_TEST = '000-0000'
 
 REQUEST_POST1 = {
-    "name": "Teste9",
+    "name": "Teste_com_squid",
     "user_owner": "Teste9",
     "image": "desktop_padrao_vnfd",
     "classroom": "codigodauturma",
-    "instances": 1,
+    "instances": 5,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
     "creation_date": '1655773901',
-    "removal_date": '1656034212',
+    "removal_date": '1659446403',
     "networkfunctions": {
-        # "vnf1": {
-        #     "image": "openwrt_vnfd",
-        #     "order": 1,
-        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
-        # },
+        "vnf1": {
+            "image": "squid_vnfd",
+            "order": 1,
+            "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        },
         # "vnf2": {
         #     "image": "openwrt_vnfd",
         #     "order": 2,

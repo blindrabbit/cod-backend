@@ -284,6 +284,19 @@ def main():
         return 'Testes realizados com sucesso.'
 
 
+    @app.route('/beta/reflect', methods=['POST', 'GET'])
+    def beta_create_laboratory():
+        # print(request)
+        if request.method == 'GET':
+            return 'Get Method not allowed', 400
+
+        if request.method == 'POST':
+            data = request.get_json()
+            # lab_check_up = create_laboratory_validade_json(data)
+
+        return data
+
+
     @app.route('/beta/create_laboratory', methods=['POST', 'GET'])
     def beta_create_laboratory():
         # print(request)
