@@ -285,8 +285,8 @@ def main():
 
 
     @app.route('/beta/reflect', methods=['POST', 'GET'])
-    def beta_create_laboratory():
-        # print(request)
+    def beta_reflect():
+        data = None
         if request.method == 'GET':
             return 'Get Method not allowed', 400
 
