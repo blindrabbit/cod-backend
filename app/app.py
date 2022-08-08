@@ -8,6 +8,7 @@
 
 # GRAFICOS DE TEMPO DOS METODOS
 #https://colab.research.google.com/drive/1uUaeUg1OnDusHFeMTFl8gGDkMXw3FVi_#scrollTo=hblmjgL8ECQ3
+
 from ipaddress import ip_address
 import json
 import threading

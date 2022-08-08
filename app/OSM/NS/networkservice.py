@@ -18,7 +18,7 @@ def get_compute_info():
             method="GET", url=url, headers=headers, json=payload, verify=False)
 
     except Exception as error:
-        print(error)
+        response = 'error ao inicializar a coleta de dados no ComputeNODE.'
 
     return response  # +str(vimAccountId) eita carai!
 
