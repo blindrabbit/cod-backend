@@ -166,6 +166,7 @@ class Tests_Methods(BaseModel):
                                        constraints=[SQL('AUTO_INCREMENT')])
     start_date_test_methods = DateTimeField()
     finish_date_test_methods = DateTimeField()
+    group = CharField(max_length=100)
     fk_tests = ForeignKeyField(Tests, db_column='id_tests')
     fk_methods = ForeignKeyField(Methods, db_column='id_methods')
 

@@ -1,4 +1,5 @@
-OSM_IP = "10.50.1.126"
+# OSM_IP = "10.50.1.126"
+OSM_IP = "172.16.112.56"
 OPENSTACK_IP = "10.50.0.159"
 IP = "172.16.112.56"
 PORT = "9999"
@@ -35,28 +36,48 @@ url_osm = "https://"+OSM_IP+":"+PORT+"/osm"
 #     },
 # }
 
-ENABLED_TEST = True
+ENABLED_TEST = False
 SERVICE_ID = 1
 
-global DESCRIPTION_TEST
+# global DESCRIPTION_TEST
 DESCRIPTION_TEST = '000-0000'
 
 REQUEST_POST1 = {
-    "name": "Teste_com_squid",
-    "user_owner": "Teste9",
-    "image": "desktop_padrao_vnfd",
+    "name": "teste-tempos-xxxxxxx",
+    "user_owner": "Teste_cache",
+    "image": "tiny_desktop_vnfd",
     "classroom": "codigodauturma",
-    "instances": 5,
+    "instances": 3,
     "description": "descricao informativa do laboratorio",
     "internetaccess": True,
     "creation_date": '1655773901',
-    "removal_date": '1659446403',
+    "removal_date": '1663045921',
     "networkfunctions": {
-        "vnf1": {
-            "image": "squid_vnfd",
-            "order": 1,
+        "vnf0": {
+            "image": "tiny_vnfd",
+            "order": 0,
             "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
         },
+        # "vnf1": {
+        #     "image": "squid_vnfd",
+        #     "order": 1,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
+        # "vnf2": {
+        #     "image": "squid_vnfd",
+        #     "order": 2,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
+        # "vnf3": {
+        #     "image": "squid_vnfd",
+        #     "order": 3,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
+        # "vnf4": {
+        #     "image": "squid_vnfd",
+        #     "order": 4,
+        #     "configs": "TEXTO EM FORMATO JSON QUE SERÁ TRATADO PELO GERENCIADOR DA VNF",
+        # },
         # "vnf2": {
         #     "image": "openwrt_vnfd",
         #     "order": 2,

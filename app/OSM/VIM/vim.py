@@ -75,9 +75,9 @@ def get_vim_account_by_name(token, vimName):
         "Authorization": 'Bearer '+token
     }
 
-    vims = requests.request("GET", url, headers=headers, data=payload,verify=False)
+    vims = requests.request("GET", url, headers=headers, data=payload, verify=False)
     for vim in vims.json():
-        if vim['name']=="VIM_"+vimName:
+        if vim['name'] == "VIM_"+vimName:
             return vim
 
     return False

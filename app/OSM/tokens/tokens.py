@@ -7,12 +7,18 @@ def create_token(project_id='admin'):
         'Content-Type': 'application/json',
         'Accept': 'application/json',
     }
-
+# # ARACRUZ
     payload = {
         "username": 'admin',
-        "password": 'admin',
+        "password": '@Baze190AX',
         "project_id": project_id
     }
+
+    # payload = {
+    #     "username": 'admin',
+    #     "password": 'admin',
+    #     "project_id": project_id
+    # }
 
     response = requests.request(method="POST", url=url_token_osm, headers=headers,
                                 json=payload, verify=False)
