@@ -346,207 +346,77 @@ def main():
     @app.route('/beta/create_laboratory', methods=['POST', 'GET'])
     def beta_create_laboratory():
         cloud = 'openstack-serra'
-        payload = REQUEST_POST1
-        undo = {}
-        json_validator = create_laboratory_validade_json(payload)
+        if request.method == 'GET':
+            return 'Get Method not allowed', 400
 
-        if json_validator is not False:
-            return json_validator
+        if request.method == 'POST':
+            payload = request.get_json()
 
-        try:
-            in_testing = False
+            undo = {}
+            json_validator = create_laboratory_validade_json(payload)
 
-            user_name = 'renancs'  # recuperar o nome do FRONTEND
-            user_id = '2'  # recuperar o ID do FRONTEND
+            if json_validator is not False:
+                # print('ERRO NO JSON')
+                retorno = {'error': json_validator}
+                return retorno
 
-            user_from_bd = User.get_or_none(id_user=user_id)
-            if user_from_bd is None:
-                user_from_bd = User.get_by_id(DEFAULT_USER)
+            try:
+                in_testing = False
 
-            user_id = user_from_bd.id_user
+                user_name = 'renancs'  # recuperar o nome do FRONTEND
+                user_id = '2'  # recuperar o ID do FRONTEND
 
-            laboratory_name = LABVER_PREFIX + payload['name']
-            laboratory_classroom = payload['classroom']
-            laboratory_description = payload['description']
-            laboratory_instances = payload['instances']
+                user_from_bd = User.get_or_none(id_user=user_id)
+                if user_from_bd is None:
+                    user_from_bd = User.get_by_id(DEFAULT_USER)
 
-            project_name = laboratory_name
-            project_description = laboratory_description
+                user_id = user_from_bd.id_user
 
-            network_name = laboratory_name + 'rede-data'
-            subnet_name = laboratory_name + 'subrede-data'
-            router_gateway_port_name = laboratory_name + 'porta_roteador'
-            router_name = laboratory_name + 'roteador'
+                laboratory_name = LABVER_PREFIX + payload['name']
+                laboratory_classroom = payload['classroom']
+                laboratory_description = payload['description']
+                laboratory_instances = payload['instances']
 
-            creation_date = datetime.datetime.fromtimestamp(int(payload['creation_date']))
-            removal_date = datetime.datetime.fromtimestamp(int(payload['removal_date']))
+                creation_date = datetime.datetime.fromtimestamp(int(payload['creation_date']))
+                removal_date = datetime.datetime.fromtimestamp(int(payload['removal_date']))
 
-            if Laboratory.get_or_none(Laboratory.name == laboratory_name):
-                return "ja tem com esse nome"
+                if Laboratory.get_or_none(Laboratory.name == laboratory_name):
+                    return "ja tem com esse nome"
 
-            laboratory_to_bd = Laboratory.create(
-                name=laboratory_name,
-                classroom=laboratory_classroom,
-                description=laboratory_description,
-                instances=laboratory_instances,
-                creation_date=creation_date,
-                removal_date=removal_date,
-                fk_user=User.select().where(User.id_user == user_id)
-            )
+                laboratory_to_bd = Laboratory.create(
+                    name=laboratory_name,
+                    classroom=laboratory_classroom,
+                    description=laboratory_description,
+                    instances=laboratory_instances,
+                    creation_date=creation_date,
+                    removal_date=removal_date,
+                    fk_user=User.select().where(User.id_user == user_id)
+                )
 
-            undo['laboratory_to_bd'] = True
+                undo['laboratory_to_bd'] = True
 
-            connection_openstack = create_connection_openstack_clouds_file(cloud)
+                id_do_lab = laboratory_to_bd.id_laboratory
 
-            project = create_project(user_name, project_name, project_description, connection_openstack)
-
-            undo['create_project_openstack'] = project['id']
-
-            project_to_bd = Project.create(
-                id_project=project['id'],
-                name=project_name,
-                fk_user=User.select().where(User.id_user == user_id),
-                fk_laboratory=laboratory_to_bd.id_laboratory,
-                description=project_description
-            )
-
-            undo['project_to_bd'] = project['id']
-
-            network = create_network(network_name, project['id'], connection_openstack)
-
-            undo['create_network_openstack'] = network['id']
-
-            cidr = '10.' + str(randint(0, 254)) + '.' + str(randint(0, 254)) + '.0/24'
-            gateway = cidr.replace('.0/24', '.1')
-
-            subnetwork = create_subnet(network['id'], subnet_name, 4, cidr,
-                                       gateway, connection_openstack)
-
-            router_gateway_port = create_port(network['id'], router_gateway_port_name,
-                                              gateway, subnetwork['id'], connection_openstack)
-
-            undo['create_port_openstack'] = router_gateway_port['id']
-
-            provider_network = get_network_by_name('provider', connection_openstack)
-
-            router = create_router(router_name, provider_network['id'], project['id'],
-                                   connection_openstack)
-
-            undo['create_router_openstack'] = router['id']
-
-            add_port_to_router(router, subnetwork['id'], router_gateway_port['id'], connection_openstack)
-
-            project_to_bd.cidr = cidr
-            project_to_bd.gateway = gateway
-            project_to_bd.openstack_id_router = router['id']
-            project_to_bd.openstack_id_router_gateway_port = router_gateway_port['id']
-            project_to_bd.openstack_id_subnet = subnetwork['id']
-            project_to_bd.openstack_id_network = network['id']
-
-            project_to_bd.save()
-
-            id_do_lab = laboratory_to_bd.id_laboratory
-
-            if user_from_bd.token_OSM == '':
-                token = tokens.create_token()
-                user_from_bd.token_OSM = str(token['id'])
-                user_from_bd.save()
-                token = str(token['id'])
-            else:
-                if not in_testing:
-                    tokenInfo = tokens.get_token_info(user_from_bd.token_OSM)
-                    if "_id" in tokenInfo:
-                        token = tokenInfo['_id']
-                    if "code" in tokenInfo:
-                        if tokenInfo['code'] == 'UNAUTHORIZED':
-                            token = tokens.create_token()
-                            user_from_bd.token_OSM = str(token['id'])
-                            user_from_bd.save()
-                            token = str(token['id'])
+                # Recurso do agendamento, se a data de criação for menor que a data atual,
+                # ele instancia no momento da criação. Se não, será inicializado por outro metodo de inicialização.
+                if creation_date <= datetime.datetime.now():
+                    laboratory_to_bd.status = 'instantiated'
                 else:
-                    token = tokens.create_token()
-                    user_from_bd.token_OSM = str(token['id'])
-                    user_from_bd.save()
-                    token = str(token['id'])
+                    laboratory_to_bd.status = 'scheduled'
 
-            vimAccount = OSMvim.get_vim_account_by_name(token, project_name)
+                retorno = {'id': id_do_lab}
 
-            vimAccountId = {}
+                laboratory_to_bd.save()
 
-            if not vimAccount:
-                vimAccountId = OSMvim.create_vim(token, project_name)
-            else:
-                vimAccountId['id'] = vimAccount['_id']
+                return retorno
 
-            undo['OSMvim_create_vim'] = vimAccountId['id']
+            except Exception as error:
+                if 'laboratory_to_bd' in undo:
+                    print('apagar laboratorio no banco de dados')
+                    laboratory_to_bd.delete_instance(recursive=True)
 
-            nsd = OSMNS.create_nsd(laboratory_name, cidr, REQUEST_POST1)
-
-            nsdId = OSMNS.compose_ns(token, nsd)
-            nsName = project_name
-
-            undo['OSMNS_compose_ns'] = nsdId
-
-            # Recurso do agendamento, se a data de criação for menor que a data atual,
-            # ele instancia no momento da criação. Se não, será inicializado por outro metodo de inicialização.
-            if creation_date <= datetime.datetime.now():
-                # print(token, nsName, nsdId, vimAccountId['id'])
-                nsdId_instance = OSMNS.instantiate_ns(token, nsName, nsdId, vimAccountId['id'])
-                laboratory_to_bd.status = 'instantiated'
-
-                undo['OSMNS_instantiate_ns'] = nsdId_instance
-            else:
-                laboratory_to_bd.status = 'scheduled'
-
-            networkservice_to_bd = Networkservice.create(
-                id_networkservice=nsdId,
-                id_osm_nsd=nsdId,
-                id_osm_ns_instance=nsdId_instance['id'],
-                id_osm_vim=vimAccountId['id'],
-                fk_project=project['id']
-            )
-            networkservice_to_bd.save()
-
-            retorno = {'id': id_do_lab}
-
-            laboratory_to_bd.save()
-
-            return retorno
-
-        except Exception as error:
-            if 'OSMNS_instantiate_ns' in undo:
-                print('apagar no OSM network service Instance')
-                OSMNS.delete_ns_instantiate(token, undo['OSMNS_instantiate_ns'])
-
-            else:
-                if 'create_router_openstack' in undo:
-                    print('apagar roteador')
-                    delete_router(undo['create_router_openstack'], undo['create_port_openstack'], connection_openstack)
-
-                if 'create_network_openstack' in undo:
-                    print('apagar network')
-                    try:
-                        delete_network(undo['create_network_openstack'], connection_openstack)
-                    except Exception as error:
-                        print('failed to remove network, trying to remove NS on OSM.')
-
-                if 'OSMNS_compose_ns' in undo:
-                    print('apagar no OSM network service Descriptor')
-                    OSMNS.delete_nsd(token, undo['OSMNS_compose_ns'])
-
-                if 'OSMvim_create_vim' in undo:
-                    print('apagar no OSM VIM')
-                    OSMvim.delete_vim(token, undo['OSMvim_create_vim'])
-
-            if 'create_project_openstack' in undo:
-                print('apagar projeto')
-                delete_project(undo['create_project_openstack'], connection_openstack)
-
-            if 'laboratory_to_bd' in undo:
-                print('apagar laboratorio no banco de dados')
-                laboratory_to_bd.delete_instance(recursive=True)
-
-            return error
+                print(error)
+            return False
 
     # @app.route('/beta/create_laboratory', methods=['POST', 'GET'])
     # def beta_create_laboratory():

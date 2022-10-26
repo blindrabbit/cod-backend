@@ -8,11 +8,11 @@ from datetime import datetime
 from sqlalchemy import false
 from database.connection_db import *
 
-# db = create_connection_db('odb_vitor',
-#                           'root2', "root2", '10.50.1.122', 3306)
-
-db = create_connection_db('odb',
+db = create_connection_db('odb_vitor',
                           'root2', "root2", '10.50.1.122', 3306)
+
+# db = create_connection_db('odb',
+#                           'root2', "root2", '10.50.1.122', 3306)
 
 
 class BaseModel(Model):
