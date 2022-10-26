@@ -381,7 +381,8 @@ def main():
                 removal_date = datetime.datetime.fromtimestamp(int(payload['removal_date']))
 
                 if Laboratory.get_or_none(Laboratory.name == laboratory_name):
-                    return "ja tem com esse nome"
+                    retorno = {'error': "ja tem com esse nome"}
+                    return retorno
 
                 laboratory_to_bd = Laboratory.create(
                     name=laboratory_name,
